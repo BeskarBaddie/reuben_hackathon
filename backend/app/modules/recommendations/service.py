@@ -2,9 +2,11 @@ import json
 from uuid import UUID
 
 import httpx
+import numpy as np
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.modules.recommendations.embeddings import embed_text, embed_texts
 from app.modules.analysis.models import FarmAnalysis
 from app.modules.analysis.schemas import AnalysisStatus
 from app.modules.farms.models import Farm
@@ -18,7 +20,9 @@ from app.modules.recommendations.repository import RecommendationRepository
 from app.modules.recommendations.retrieval import (
     RetrievedPassage,
     citations_from_passages,
+    corpus_crops,
     format_context,
+    is_crop_supported,
     retrieve,
 )
 from app.modules.recommendations.schemas import RecommendationOutput
@@ -59,12 +63,20 @@ class RecommendationService:
         # Retrieve grounding guidance from the local document corpus.
         passages = retrieve(evidence)
         context = format_context(passages)
+        crop_supported = is_crop_supported(farm.crop)
 
         provider = "deterministic"
         model = None
-        output = generate_deterministic_recommendations(evidence, passages)
+        output = generate_deterministic_recommendations(
+            evidence, passages, crop_supported=crop_supported
+        )
 
-        if settings.recommendation_provider == "openai" and settings.openai_api_key:
+        # Only hand off to an LLM when we have crop-specific documents to ground
+        # it in. For unsupported crops we keep the deterministic, explicitly
+        # flagged "insufficient data" output rather than risk fabricated advice.
+        if not crop_supported:
+            provider = "deterministic_insufficient_crop_data"
+        elif settings.recommendation_provider == "openai" and settings.openai_api_key:
             try:
                 output = generate_openai_recommendations(evidence, context)
                 provider = "openai"
@@ -86,6 +98,12 @@ class RecommendationService:
         # Citations are derived from the passages actually retrieved, never from the
         # model, so they cannot be fabricated.
         output["citations"] = citations_from_passages(passages)
+
+        # Per-claim grounding: independently check (via embeddings) whether each
+        # action is actually supported by a retrieved passage, and attach the
+        # best-matching source. This is computed here, not self-reported by the
+        # LLM, so it cannot be gamed.
+        attach_action_grounding(output, passages)
         validated = RecommendationOutput.model_validate(output).model_dump()
 
         # Record what was retrieved so the recommendation is auditable.
@@ -162,6 +180,44 @@ def build_evidence_snapshot(farm: Farm, analysis: FarmAnalysis) -> dict:
     }
 
 
+def attach_action_grounding(output: dict, passages: list[RetrievedPassage]) -> None:
+    """Embed each action and attach the best-matching retrieved passage as its
+    grounding. Only set when grounding is verifiable (embeddings available and
+    passages exist); otherwise the action is left without a grounding field.
+    """
+    actions = output.get("actions", [])
+    if not actions or not passages:
+        return
+
+    # Reuse the passage vectors from dense retrieval when present; otherwise
+    # embed the passage texts now.
+    if all(passage.vector is not None for passage in passages):
+        matrix = np.vstack([passage.vector for passage in passages])
+    else:
+        matrix = embed_texts([passage.text for passage in passages])
+    if matrix is None or matrix.size == 0:
+        return
+
+    threshold = settings.retrieval_grounding_threshold
+    for action in actions:
+        claim = f"{action.get('action', '')}. {action.get('reason', '')}".strip()
+        query_vector = embed_text(claim)
+        if query_vector is None:
+            continue
+        scores = matrix @ query_vector
+        best = int(scores.argmax())
+        score = float(scores[best])
+        passage = passages[best]
+        action["grounding"] = {
+            "grounded": score >= threshold,
+            "score": round(score, 4),
+            "source": passage.source,
+            "title": passage.title,
+            "path": passage.path,
+            "page": passage.page,
+        }
+
+
 def _forecast_summary(forecast: dict) -> str:
     if not forecast:
         return "There is insufficient data for a near-term weather forecast."
@@ -218,8 +274,19 @@ def _deterministic_narrative(
     return narrative
 
 
+def _supported_crops_phrase() -> str:
+    crops = sorted(corpus_crops())
+    if not crops:
+        return "the supported crops"
+    if len(crops) == 1:
+        return crops[0]
+    return ", ".join(crops[:-1]) + " and " + crops[-1]
+
+
 def generate_deterministic_recommendations(
-    evidence: dict, passages: list[RetrievedPassage] | None = None
+    evidence: dict,
+    passages: list[RetrievedPassage] | None = None,
+    crop_supported: bool = True,
 ) -> dict:
     passages = passages or []
     risk = evidence["risk"]
@@ -285,13 +352,40 @@ def generate_deterministic_recommendations(
 
     actions = actions[:6]
 
+    forecast_summary = _forecast_summary(evidence.get("forecast", {}))
+
+    # No crop-specific documents exist for this crop: be explicit that the advice
+    # is not grounded in crop-specific sources, rather than silently borrowing
+    # another crop's guidance.
+    if not crop_supported:
+        crop = farm["crop"]
+        supported = _supported_crops_phrase()
+        overall = risk.get("overall_risk_level") or "insufficient data"
+        summary = (
+            f"Not enough crop-specific data for {crop}. The knowledge base currently covers "
+            f"only {supported}, so the steps below are general climate guidance from this "
+            f"field's risk analysis, not {crop}-specific recommendations."
+        )
+        narrative = (
+            f"We do not yet have agronomy documents for {crop}, so we cannot give advice "
+            f"grounded in {crop}-specific sources. Only {supported} are supported so far. "
+            f"The latest analysis shows {overall} overall climate risk for this field. "
+            f"{forecast_summary} The steps below follow from that general climate and risk "
+            f"picture and are not specific to {crop} — please treat them as general guidance only."
+        )
+        return {
+            "summary": summary,
+            "narrative": narrative,
+            "forecast_summary": forecast_summary,
+            "actions": actions,
+        }
+
     summary = (
         f"{farm['name']} has {risk['overall_risk_level'] or 'insufficient data'} overall risk. "
         f"The main concern is drought risk for {farm['crop']}."
         if risk["drought_level"] == "high"
         else f"{farm['name']} has {risk['overall_risk_level'] or 'insufficient data'} overall risk based on the latest analysis."
     )
-    forecast_summary = _forecast_summary(evidence.get("forecast", {}))
 
     return {
         "summary": summary,

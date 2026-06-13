@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-5.5", alias="OPENAI_MODEL")
     ollama_base_url: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="llama3.1:latest", alias="OLLAMA_MODEL")
+    ollama_embedding_model: str = Field(
+        default="nomic-embed-text", alias="OLLAMA_EMBEDDING_MODEL"
+    )
+    retrieval_grounding_threshold: float = Field(
+        default=0.55, alias="RETRIEVAL_GROUNDING_THRESHOLD"
+    )
 
 
 @lru_cache

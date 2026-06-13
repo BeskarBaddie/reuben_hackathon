@@ -8,6 +8,7 @@ from app.modules.recommendations.forecast import build_forecast
 from app.modules.recommendations.retrieval import (
     build_query,
     citations_from_passages,
+    is_crop_supported,
     retrieve,
 )
 from app.modules.recommendations.schemas import RecommendationOutput
@@ -154,3 +155,109 @@ def test_mock_forecast_continues_dry_season_trend() -> None:
         "hot and dry",
         "near normal",
     }
+
+
+def test_unsupported_crop_retrieves_nothing() -> None:
+    # The corpus covers maize and rice; wheat is not present.
+    assert is_crop_supported("maize") is True
+    assert is_crop_supported("wheat") is False
+
+    evidence = {
+        "farm": {"crop": "wheat", "irrigation_type": "rainfed"},
+        "risk": {"drought_level": "high", "flood_level": "low", "heat_level": "low"},
+        "vegetation": {"water_stress": "high"},
+        "climate": {"climate_signal": "drier than usual"},
+    }
+
+    # No documents for wheat -> retrieval returns nothing, rather than falling
+    # back to maize/rice documents.
+    assert retrieve(evidence) == []
+
+
+def test_unsupported_crop_output_flags_insufficient_data() -> None:
+    farm = Farm(
+        id=uuid4(),
+        owner_id=uuid4(),
+        name="Wheat Field",
+        crop="wheat",
+        irrigation_type=IrrigationType.RAINFED,
+        area_hectares=3.0,
+        boundary="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+    )
+    analysis = FarmAnalysis(
+        id=uuid4(),
+        farm_id=farm.id,
+        status=AnalysisStatus.COMPLETED,
+        drought_level="high",
+        flood_level="low",
+        heat_level="low",
+        overall_risk_level="high",
+        drought_drivers=["Rainfall well below average"],
+    )
+    evidence = build_evidence_snapshot(farm, analysis)
+    passages = retrieve(evidence)
+
+    output = generate_deterministic_recommendations(evidence, passages, crop_supported=False)
+
+    # The summary and narrative must clearly state the crop is unsupported and
+    # name the crops that are covered.
+    assert "wheat" in output["summary"].lower()
+    assert "not enough" in output["summary"].lower() or "insufficient" in output["summary"].lower()
+    assert "maize" in output["summary"].lower() and "rice" in output["summary"].lower()
+    assert "not specific to wheat" in output["narrative"].lower()
+
+    # No fabricated citations for an unsupported crop.
+    assert citations_from_passages(passages) == []
+
+
+def test_action_grounding_flags_supported_and_unsupported(monkeypatch) -> None:
+    import numpy as np
+
+    from app.modules.recommendations import service as svc
+    from app.modules.recommendations.retrieval import RetrievedPassage
+
+    supported_vec = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+    unrelated_vec = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+
+    passages = [
+        RetrievedPassage(
+            doc_id="maize_guide__0005",
+            title="Maize guide (p. 5)",
+            source="Maize guide",
+            crop="maize",
+            path="Maize/maize_guide.pdf",
+            page=5,
+            text="Mulch conserves soil moisture in the root zone.",
+            score=0.9,
+            vector=supported_vec,
+        )
+    ]
+
+    def fake_embed_text(text: str, timeout: float = 60.0):
+        return supported_vec if "mulch" in text.lower() else unrelated_vec
+
+    monkeypatch.setattr(svc, "embed_text", fake_embed_text)
+
+    output = {
+        "actions": [
+            {"action": "Apply mulch around the plants", "reason": "retain soil moisture", "evidence": ["x"]},
+            {"action": "Build a perimeter fence", "reason": "keep livestock out", "evidence": ["y"]},
+        ]
+    }
+    svc.attach_action_grounding(output, passages)
+
+    grounded = output["actions"][0]["grounding"]
+    ungrounded = output["actions"][1]["grounding"]
+    assert grounded["grounded"] is True
+    assert grounded["source"] == "Maize guide"
+    assert grounded["path"] == "Maize/maize_guide.pdf"
+    assert grounded["page"] == 5
+    assert ungrounded["grounded"] is False
+
+
+def test_action_grounding_skipped_without_passages() -> None:
+    from app.modules.recommendations import service as svc
+
+    output = {"actions": [{"action": "Do a thing", "reason": "because", "evidence": ["z"]}]}
+    svc.attach_action_grounding(output, [])
+    assert "grounding" not in output["actions"][0]

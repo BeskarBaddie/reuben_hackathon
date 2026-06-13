@@ -4,17 +4,29 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
+class ActionGrounding(BaseModel):
+    grounded: bool
+    score: float
+    source: str | None = None
+    title: str | None = None
+    path: str | None = None
+    page: int | None = None
+
+
 class RecommendationAction(BaseModel):
     priority: int
     action: str
     reason: str
     evidence: list[str]
+    grounding: ActionGrounding | None = None
 
 
 class RecommendationCitation(BaseModel):
     doc_id: str
     title: str
     source: str
+    path: str = ""
+    page: int = 0
 
 
 class RecommendationOutput(BaseModel):

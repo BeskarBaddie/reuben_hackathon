@@ -778,27 +778,97 @@
 
       function renderRecommendations(recommendation) {
         latestRecommendation = recommendation;
+        const output = recommendation.output || {};
+        const citations = output.citations || [];
+        const insufficientData =
+          citations.length === 0 || /insufficient/.test(recommendation.provider || "");
+
+        const provenanceLabel = insufficientData
+          ? "Not grounded in crop-specific documents"
+          : recommendation.provider === "deterministic" ||
+              recommendation.provider === "deterministic_fallback"
+            ? "Worded by rule-based engine, grounded in the documents below"
+            : `Worded by ${escapeHtml(recommendation.model || recommendation.provider)}, grounded in the documents below`;
+
+        const caveatBanner = insufficientData
+          ? `<div class="analysis-card" style="border-left: 4px solid #c08a1e; background: #fbf4e6;">
+               <strong>⚠ Limited data for this crop</strong>
+               <span>${escapeHtml(output.summary)}</span>
+             </div>`
+          : "";
+
+        const sourcesBlock = insufficientData
+          ? `<div class="analysis-card" style="margin-top: 12px;">
+               <strong>Sources</strong>
+               <span>No crop-specific source documents were available, so no document-backed citations are shown. The actions above come only from this field's climate and risk analysis.</span>
+             </div>`
+          : `<div class="analysis-card" style="margin-top: 12px;">
+               <strong>Sources (${citations.length})</strong>
+               <span>These recommendations are grounded in the following documents from the knowledge base:</span>
+               <ol style="margin: 8px 0 0; padding-left: 20px;">
+                 ${citations
+                   .map((c) => {
+                     const url = sourceUrl(c.path, c.page);
+                     const label = `${escapeHtml(c.source)} <span style="color: var(--muted);">${escapeHtml(citationLocation(c.title, c.source))}</span>`;
+                     return `<li style="margin-bottom: 4px;">${url ? `<a href="${url}" target="_blank" rel="noopener"><strong>${escapeHtml(c.source)}</strong> ${escapeHtml(citationLocation(c.title, c.source))} ↗</a>` : `<strong>${label}</strong>`}</li>`;
+                   })
+                   .join("")}
+               </ol>
+             </div>`;
+
         recommendationsStatus.innerHTML = `
+          ${caveatBanner}
           <div class="analysis-card">
             <strong>Adaptation plan</strong>
-            <span>${escapeHtml(recommendation.output.summary)}</span>
-            <span>${riskBadge(recommendation.provider)} Model: ${escapeHtml(recommendation.model || "none")} · Prompt: ${escapeHtml(recommendation.prompt_version)}</span>
+            ${insufficientData ? "" : `<span>${escapeHtml(output.summary)}</span>`}
+            <span style="color: var(--muted);">${riskBadge(recommendation.provider)} ${provenanceLabel} · Prompt: ${escapeHtml(recommendation.prompt_version)}</span>
           </div>
+          ${output.narrative ? `<div class="analysis-card" style="margin-top: 12px;"><strong>Summary</strong><span>${escapeHtml(output.narrative)}</span></div>` : ""}
+          ${output.forecast_summary ? `<div class="analysis-card" style="margin-top: 12px;"><strong>Forecast (next 14 days)</strong><span>${escapeHtml(output.forecast_summary)}</span></div>` : ""}
           <ol class="action-list" style="margin-top: 12px;">
-              ${recommendation.output.actions
+              ${(output.actions || [])
                 .map(
                   (action) => `
                     <li class="action-item">
                       <div style="display: flex; align-items: center; gap: 10px;"><span class="priority">${action.priority}</span><strong>${escapeHtml(action.action)}</strong></div>
                       <span>${escapeHtml(action.reason)}</span>
                       <span>Evidence: ${action.evidence.map(escapeHtml).join("; ")}</span>
+                      ${groundingHtml(action.grounding)}
                     </li>
                   `
                 )
                 .join("")}
           </ol>
+          ${sourcesBlock}
         `;
         renderAll();
+      }
+
+      function citationLocation(title, source) {
+        // Titles are stored as "Source name (p. 12)"; show just the page label.
+        const match = /\(([^)]*)\)\s*$/.exec(title || "");
+        return match ? match[1] : "";
+      }
+
+      function sourceUrl(path, page) {
+        if (!path) return null;
+        const encoded = path.split("/").map(encodeURIComponent).join("/");
+        const base = `${apiBaseUrl}/sources/${encoded}`;
+        return page ? `${base}#page=${page}` : base;
+      }
+
+      function groundingHtml(grounding) {
+        if (!grounding) return "";
+        const pct = Math.round((grounding.score || 0) * 100);
+        const url = sourceUrl(grounding.path, grounding.page);
+        const pageLabel = grounding.page ? `, p.&nbsp;${grounding.page}` : "";
+        if (grounding.grounded && url) {
+          return `<span style="color: #1f7a4d; font-size: 0.85em;">✓ Grounded in <a href="${url}" target="_blank" rel="noopener" style="color: #1f7a4d; text-decoration: underline;">${escapeHtml(grounding.source)}${pageLabel} ↗</a> <span style="color: var(--muted);">(${pct}% match)</span></span>`;
+        }
+        if (grounding.grounded) {
+          return `<span style="color: #1f7a4d; font-size: 0.85em;">✓ Grounded in ${escapeHtml(grounding.source)} <span style="color: var(--muted);">(${pct}% match)</span></span>`;
+        }
+        return `<span style="color: #c08a1e; font-size: 0.85em;">⚠ Not directly found in source documents — general guidance <span style="color: var(--muted);">(best match ${pct}%)</span></span>`;
       }
 
       const boundaryStyles = [

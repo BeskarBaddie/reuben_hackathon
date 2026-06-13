@@ -17,11 +17,17 @@ import json
 import re
 from pathlib import Path
 
+import numpy as np
 from pypdf import PdfReader
+
+from app.modules.recommendations.embeddings import embed_texts, embedding_model
 
 HERE = Path(__file__).parent
 SOURCE_DIR = Path(__file__).resolve().parents[4] / "data" / "rag_sources"
 CORPUS_PATH = HERE / "corpus.jsonl"
+EMBEDDINGS_PATH = HERE / "corpus_embeddings.npy"
+EMBEDDINGS_META_PATH = HERE / "corpus_embeddings.meta.json"
+EMBED_BATCH = 64
 
 CHUNK_WORDS = 180
 CHUNK_OVERLAP = 30
@@ -122,6 +128,7 @@ def ingest() -> None:
                     "title": f"{title} ({page_label})",
                     "source": title,
                     "crop": crop,
+                    "path": pdf_path.relative_to(SOURCE_DIR).as_posix(),
                     "page_start": page_start,
                     "page_end": page_end,
                     "hazards": _detect_hazards(chunk["text"]),
@@ -138,6 +145,36 @@ def ingest() -> None:
     crops = sorted({record["crop"] for record in records})
     print(f"\nWrote {len(records)} chunks from {len(pdf_paths)} PDFs to {CORPUS_PATH.name}")
     print(f"Crops: {', '.join(crops)}")
+
+    _embed_corpus(records)
+
+
+def _embed_corpus(records: list[dict]) -> None:
+    """Embed each chunk and save vectors aligned to corpus.jsonl line order."""
+    print(f"\nEmbedding {len(records)} chunks with '{embedding_model()}' ...")
+    vectors: list[np.ndarray] = []
+    for start in range(0, len(records), EMBED_BATCH):
+        batch = [record["text"] for record in records[start : start + EMBED_BATCH]]
+        result = embed_texts(batch, timeout=300)
+        if result is None:
+            print(
+                "  ! embedding failed (is Ollama running with the embedding model "
+                f"'{embedding_model()}' pulled?). Skipping embeddings; retrieval will use BM25."
+            )
+            return
+        vectors.append(result)
+        print(f"  embedded {min(start + EMBED_BATCH, len(records))}/{len(records)}")
+
+    matrix = np.vstack(vectors).astype(np.float32)
+    np.save(EMBEDDINGS_PATH, matrix)
+    EMBEDDINGS_META_PATH.write_text(
+        json.dumps(
+            {"model": embedding_model(), "dim": int(matrix.shape[1]), "count": int(matrix.shape[0])},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    print(f"Saved {matrix.shape[0]} x {matrix.shape[1]} embeddings to {EMBEDDINGS_PATH.name}")
 
 
 if __name__ == "__main__":

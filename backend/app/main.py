@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
 from app.core.config import settings
@@ -7,6 +10,8 @@ from app.core.database import Base, engine
 from app.modules.analysis.router import router as analysis_router
 from app.modules.farms.router import router as farms_router
 from app.modules.recommendations.router import router as recommendations_router
+
+RAG_SOURCES_DIR = Path(__file__).resolve().parent.parent / "data" / "rag_sources"
 
 
 def create_app() -> FastAPI:
@@ -27,6 +32,11 @@ def create_app() -> FastAPI:
     app.include_router(farms_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")
     app.include_router(recommendations_router, prefix="/api/v1")
+
+    # Serve the source PDF corpus read-only so recommendation citations can link
+    # straight to the document (and page) they are grounded in.
+    if RAG_SOURCES_DIR.exists():
+        app.mount("/sources", StaticFiles(directory=str(RAG_SOURCES_DIR)), name="sources")
 
     @app.on_event("startup")
     def create_tables_for_local_development() -> None:
