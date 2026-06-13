@@ -7,6 +7,7 @@ from app.modules.farms.models import Farm, IrrigationType
 from app.modules.recommendations.service import (
     build_evidence_snapshot,
     generate_deterministic_recommendations,
+    make_recommendations_actionable,
 )
 from app.modules.recommendations.prompts import build_recommendation_context
 
@@ -47,7 +48,8 @@ def test_deterministic_recommendations_prioritize_high_drought() -> None:
     output = generate_deterministic_recommendations(build_evidence_snapshot(farm, analysis))
 
     assert output["actions"][0]["priority"] == 1
-    assert "Mulch" in output["actions"][0]["action"]
+    assert "driest part" in output["actions"][0]["action"]
+    assert "next 7 days" in output["actions"][0]["action"]
     assert output["actions"][0]["evidence"]
 
 
@@ -88,3 +90,34 @@ def test_recommendation_context_selects_relevant_crop_and_irrigation_only() -> N
     assert "Crop context for maize" in context
     assert "partial irrigation is available" in context
     assert "Crop context for rice" not in context
+
+
+def test_actionable_recommendations_add_plot_specific_maize_drought_actions() -> None:
+    evidence = {
+        "farm": {
+            "crop": "maize",
+            "irrigation_type": "rainfed",
+            "farmer_notes": "Upper section dries quickly and lower edge can hold water.",
+        },
+        "climate": {"rainfall_anomaly_percent": -71.6},
+        "risk": {
+            "drought_level": "high",
+            "drought_drivers": ["Rainfall is 72% below historical average"],
+            "flood_level": "low",
+            "flood_drivers": ["No strong excess rainfall drivers detected"],
+            "heat_drivers": [],
+        },
+        "retrieved_guidance": [{"source_name": "maize-drought-guide.pdf"}],
+    }
+
+    output = make_recommendations_actionable(
+        evidence,
+        {"summary": "High drought risk", "actions": []},
+    )
+
+    action_text = " ".join(action["action"] for action in output["actions"])
+
+    assert "upper or fastest-drying maize rows" in action_text
+    assert "next season" in action_text.lower()
+    assert "lower edge" in action_text
+    assert "maize-drought-guide.pdf" in output["actions"][0]["evidence"]

@@ -31,6 +31,16 @@ class RecommendationRepository:
         )
         return self.session.scalars(statement).first()
 
+    def latest_for_owner(self, owner_id: UUID) -> Recommendation | None:
+        statement = (
+            select(Recommendation)
+            .join(FarmAnalysis, FarmAnalysis.id == Recommendation.analysis_id)
+            .join(Farm, Farm.id == FarmAnalysis.farm_id)
+            .where(Farm.owner_id == owner_id)
+            .order_by(Recommendation.created_at.desc())
+        )
+        return self.session.scalars(statement).first()
+
     def create(
         self,
         analysis_id: UUID,

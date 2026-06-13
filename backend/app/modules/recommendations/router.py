@@ -29,6 +29,14 @@ def create_recommendations(
     return service.generate(analysis_id=analysis_id, owner_id=user_id)
 
 
+@router.get("/recommendations/latest", response_model=RecommendationRead)
+def get_latest_recommendation(
+    user_id: UUID = Depends(get_current_user_id),
+    service: RecommendationService = Depends(get_recommendation_service),
+) -> RecommendationRead:
+    return service.get_latest_for_owner(owner_id=user_id)
+
+
 @router.get("/analyses/{analysis_id}/recommendations", response_model=RecommendationRead)
 def get_recommendations(
     analysis_id: UUID,
