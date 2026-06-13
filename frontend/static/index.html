@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Climate Intelligence</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f7f8f5;
+        --fg: #1b1f1d;
+        --muted: #66736c;
+        --line: #d9dfd8;
+        --panel: #ffffff;
+        --accent: #1f7a4d;
+        --accent-strong: #145f3a;
+        --danger: #9f2d2d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      header {
+        align-items: center;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        padding: 16px clamp(20px, 5vw, 72px);
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      nav button {
+        background: #fff;
+        border: 1px solid var(--line);
+        color: var(--fg);
+        min-height: 34px;
+        padding-inline: 12px;
+      }
+
+      nav button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      header strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      header span,
+      p,
+      .status {
+        color: var(--muted);
+      }
+
+      main {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        padding: 24px clamp(20px, 5vw, 72px);
+      }
+
+      .view {
+        display: none;
+      }
+
+      .view.active {
+        display: grid;
+      }
+
+      .dashboard {
+        gap: 18px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        padding: 24px clamp(20px, 5vw, 72px);
+      }
+
+      .dashboard-card,
+      .report-panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        padding: 18px;
+      }
+
+      .dashboard-card strong {
+        font-size: 15px;
+      }
+
+      .dashboard-card span,
+      .report-panel span,
+      .report-panel li {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .single-column {
+        gap: 18px;
+        grid-template-columns: minmax(0, 900px);
+        padding: 24px clamp(20px, 5vw, 72px);
+      }
+
+      section,
+      aside {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        border-bottom: 1px solid var(--line);
+        padding: 18px 20px;
+      }
+
+      h1,
+      h2 {
+        font-size: 20px;
+        line-height: 1.2;
+        margin: 0 0 6px;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+        padding: 20px;
+      }
+
+      label {
+        display: grid;
+        font-size: 13px;
+        font-weight: 650;
+        gap: 7px;
+      }
+
+      input,
+      select,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--fg);
+        font: inherit;
+        min-height: 42px;
+        padding: 10px 12px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 84px;
+      }
+
+      button {
+        background: var(--accent);
+        border: 0;
+        border-radius: 6px;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        min-height: 42px;
+        padding: 0 16px;
+      }
+
+      button:hover {
+        background: var(--accent-strong);
+      }
+
+      button:disabled {
+        background: #96aa9d;
+        cursor: not-allowed;
+      }
+
+      .map-tools {
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+
+      .map-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .map-actions button {
+        min-height: 36px;
+        padding-inline: 12px;
+      }
+
+      .map-search {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 16px;
+      }
+
+      #geocoder {
+        width: 100%;
+      }
+
+      .mapboxgl-ctrl-geocoder {
+        box-shadow: none;
+        max-width: none;
+        width: 100%;
+      }
+
+      .mapboxgl-ctrl-geocoder input {
+        border: 1px solid var(--line);
+        min-height: 42px;
+      }
+
+      #map {
+        height: 560px;
+        width: 100%;
+      }
+
+      .mapboxgl-map {
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .mapboxgl-ctrl-group button {
+        min-height: 29px;
+      }
+
+      .setup-warning {
+        background: #fff7ed;
+        border-bottom: 1px solid #fed7aa;
+        color: #9a3412;
+        display: none;
+        padding: 12px 16px;
+      }
+
+      pre {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0;
+        max-height: 140px;
+        overflow: auto;
+        padding: 12px 16px;
+        white-space: pre-wrap;
+      }
+
+      .status {
+        font-size: 13px;
+        min-height: 18px;
+      }
+
+      .error {
+        color: var(--danger);
+      }
+
+      .analysis-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+      }
+
+      .analysis-card strong {
+        font-size: 14px;
+      }
+
+      @media (max-width: 920px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <strong>Climate Intelligence</strong>
+        <span>Farm registration and Earth Engine analysis</span>
+      </div>
+      <nav>
+        <button class="nav-button active" data-view="dashboard-view" type="button">Dashboard</button>
+        <button class="nav-button" data-view="register-view" type="button">Register</button>
+        <button class="nav-button" data-view="report-view" type="button">Report</button>
+        <button class="nav-button" data-view="recommendations-view" type="button">Recommendations</button>
+      </nav>
+    </header>
+
+    <section id="dashboard-view" class="view dashboard active">
+      <div class="dashboard-card">
+        <strong>Farm</strong>
+        <span id="dashboard-farm">No farm saved yet.</span>
+        <button data-view="register-view" type="button">Register farm</button>
+      </div>
+      <div class="dashboard-card">
+        <strong>Latest Analysis</strong>
+        <span id="dashboard-analysis">No analysis run yet.</span>
+        <button data-view="report-view" type="button">View report</button>
+      </div>
+      <div class="dashboard-card">
+        <strong>Recommendations</strong>
+        <span id="dashboard-recommendations">No recommendations generated yet.</span>
+        <button data-view="recommendations-view" type="button">View actions</button>
+      </div>
+    </section>
+
+    <main id="register-view" class="view">
+      <aside>
+        <div class="panel-header">
+          <h1>Register Farm</h1>
+          <p>Search a region, draw a farm polygon, then run satellite analysis.</p>
+        </div>
+        <form id="farm-form">
+          <label>
+            Farm name
+            <input id="name" required placeholder="Field A" />
+          </label>
+          <label>
+            Crop
+            <input id="crop" required value="maize" />
+          </label>
+          <label>
+            Planting date
+            <input id="planting-date" type="date" />
+          </label>
+          <label>
+            Irrigation
+            <select id="irrigation-type">
+              <option value="rainfed">Rainfed</option>
+              <option value="partial">Partial</option>
+              <option value="full">Full</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label>
+            Notes
+            <textarea id="notes" placeholder="Soil condition, access constraints, farmer observations"></textarea>
+          </label>
+          <button id="save" type="submit" disabled>Save farm</button>
+          <button id="analyze" type="button" disabled>Run analysis</button>
+          <div id="status" class="status">Search a place or use the map controls to draw a farm boundary.</div>
+        </form>
+      </aside>
+
+      <section>
+        <div class="map-tools">
+          <h2>Boundary</h2>
+          <div class="map-actions">
+            <button id="fit-boundary" type="button" disabled>Fit boundary</button>
+            <button id="clear" type="button">Clear boundary</button>
+          </div>
+        </div>
+        <div id="setup-warning" class="setup-warning">
+          Add your Mapbox public token to <code>frontend/static/config.js</code> as
+          <code>MAPBOX_TOKEN</code>, then reload this page.
+        </div>
+        <div class="map-search">
+          <div id="geocoder"></div>
+        </div>
+        <div id="map"></div>
+        <pre id="boundary-preview">No boundary yet.</pre>
+      </section>
+    </main>
+
+    <section id="report-view" class="view single-column">
+      <div class="report-panel">
+        <h1>Analysis Report</h1>
+        <div id="analysis" class="status">Save a farm, then run analysis.</div>
+        <button id="report-run-analysis" type="button" disabled>Run analysis</button>
+      </div>
+    </section>
+
+    <section id="recommendations-view" class="view single-column">
+      <div class="report-panel">
+        <h1>Recommendations</h1>
+        <div id="recommendations" class="status">Run analysis before generating recommendations.</div>
+        <button id="generate-recommendations" type="button" disabled>Generate recommendations</button>
+      </div>
+    </section>
+
+    <script src="./config.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.min.js"></script>
+    <script>
+      const apiBaseUrl = "http://127.0.0.1:8000";
+      const userId = "11111111-1111-4111-8111-111111111111";
+      const mapboxToken = window.CLIMATE_APP_CONFIG?.MAPBOX_TOKEN || "";
+      const preview = document.getElementById("boundary-preview");
+      const save = document.getElementById("save");
+      const analyze = document.getElementById("analyze");
+      const reportRunAnalysis = document.getElementById("report-run-analysis");
+      const generateRecommendations = document.getElementById("generate-recommendations");
+      const fitBoundary = document.getElementById("fit-boundary");
+      const status = document.getElementById("status");
+      const analysisStatus = document.getElementById("analysis");
+      const recommendationsStatus = document.getElementById("recommendations");
+      const dashboardFarm = document.getElementById("dashboard-farm");
+      const dashboardAnalysis = document.getElementById("dashboard-analysis");
+      const dashboardRecommendations = document.getElementById("dashboard-recommendations");
+      const setupWarning = document.getElementById("setup-warning");
+      let selectedBoundary = null;
+      let savedFarmId = null;
+      let latestAnalysisId = null;
+      let latestAnalysis = null;
+      let latestRecommendation = null;
+
+      function showView(viewId) {
+        document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+        document.getElementById(viewId)?.classList.add("active");
+        document.querySelectorAll(".nav-button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.view === viewId);
+        });
+      }
+
+      document.querySelectorAll("[data-view]").forEach((button) => {
+        button.addEventListener("click", () => showView(button.dataset.view));
+      });
+
+      function updateDashboard() {
+        dashboardFarm.textContent = savedFarmId ? `Saved farm ID ${savedFarmId}` : "No farm saved yet.";
+        dashboardAnalysis.textContent = latestAnalysis
+          ? `Overall risk ${latestAnalysis.overall_risk_level}; drought ${latestAnalysis.drought_level}`
+          : "No analysis run yet.";
+        dashboardRecommendations.textContent = latestRecommendation
+          ? `${latestRecommendation.output.actions.length} actions generated`
+          : "No recommendations generated yet.";
+      }
+
+      function renderAnalysisReport(body) {
+        latestAnalysis = body;
+        latestAnalysisId = body.id;
+        dashboardAnalysis.textContent = `Overall risk ${body.overall_risk_level}; drought ${body.drought_level}`;
+        generateRecommendations.disabled = body.status !== "completed";
+        analysisStatus.innerHTML = `
+          <div class="analysis-card">
+            <strong>Farm health report</strong>
+            <span>NDVI: ${body.ndvi}</span>
+            <span>Vegetation: ${body.vegetation_health}</span>
+            <span>Water stress: ${body.water_stress}</span>
+            <span>Image date: ${body.image_date}</span>
+            <span>Source: ${body.source}</span>
+            <span>Rainfall this season: ${body.rainfall_this_season_mm ?? "pending"} mm</span>
+            <span>Historical rainfall average: ${body.rainfall_historical_average_mm ?? "pending"} mm</span>
+            <span>Rainfall anomaly: ${body.rainfall_anomaly_percent ?? "pending"}%</span>
+            <span>Temperature this season: ${body.temperature_this_season_c ?? "pending"} C</span>
+            <span>Temperature anomaly: ${body.temperature_anomaly_c ?? "pending"} C</span>
+            <span>Climate signal: ${body.climate_signal ?? "pending"}</span>
+            <span>Drought risk: ${body.drought_level ?? "pending"} (${body.drought_score ?? "pending"})</span>
+            <span>${(body.drought_drivers ?? []).join("; ")}</span>
+            <span>Flood risk: ${body.flood_level ?? "pending"} (${body.flood_score ?? "pending"})</span>
+            <span>${(body.flood_drivers ?? []).join("; ")}</span>
+            <span>Heat stress risk: ${body.heat_level ?? "pending"} (${body.heat_score ?? "pending"})</span>
+            <span>${(body.heat_drivers ?? []).join("; ")}</span>
+            <span>Overall risk: ${body.overall_risk_level ?? "pending"}</span>
+          </div>
+        `;
+      }
+
+      function renderRecommendations(recommendation) {
+        latestRecommendation = recommendation;
+        dashboardRecommendations.textContent = `${recommendation.output.actions.length} actions generated`;
+        recommendationsStatus.innerHTML = `
+          <div class="analysis-card">
+            <strong>Adaptation plan</strong>
+            <span>${recommendation.output.summary}</span>
+            <span>Provider: ${recommendation.provider}</span>
+            <ol>
+              ${recommendation.output.actions
+                .map(
+                  (action) => `
+                    <li>
+                      <strong>${action.action}</strong><br />
+                      ${action.reason}<br />
+                      Evidence: ${action.evidence.join("; ")}
+                    </li>
+                  `
+                )
+                .join("")}
+            </ol>
+          </div>
+        `;
+      }
+
+      const boundaryStyles = [
+        {
+          id: "gl-draw-polygon-fill-inactive",
+          type: "fill",
+          filter: ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+          paint: {
+            "fill-color": "#1f7a4d",
+            "fill-outline-color": "#0b4f2c",
+            "fill-opacity": 0.28
+          }
+        },
+        {
+          id: "gl-draw-polygon-stroke-inactive",
+          type: "line",
+          filter: ["all", ["==", "active", "false"], ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+          layout: {
+            "line-cap": "round",
+            "line-join": "round"
+          },
+          paint: {
+            "line-color": "#062f1b",
+            "line-width": 4
+          }
+        },
+        {
+          id: "gl-draw-polygon-fill-active",
+          type: "fill",
+          filter: ["all", ["==", "active", "true"], ["==", "$type", "Polygon"]],
+          paint: {
+            "fill-color": "#1f7a4d",
+            "fill-outline-color": "#0b4f2c",
+            "fill-opacity": 0.22
+          }
+        },
+        {
+          id: "gl-draw-polygon-stroke-active",
+          type: "line",
+          filter: ["all", ["==", "active", "true"], ["==", "$type", "Polygon"]],
+          layout: {
+            "line-cap": "round",
+            "line-join": "round"
+          },
+          paint: {
+            "line-color": "#062f1b",
+            "line-dasharray": [0.2, 2],
+            "line-width": 4
+          }
+        },
+        {
+          id: "gl-draw-polygon-and-line-vertex-active",
+          type: "circle",
+          filter: ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"]],
+          paint: {
+            "circle-color": "#ffffff",
+            "circle-radius": 5,
+            "circle-stroke-color": "#062f1b",
+            "circle-stroke-width": 2
+          }
+        }
+      ];
+
+      if (!mapboxToken) {
+        setupWarning.style.display = "block";
+        status.textContent = "Mapbox token is missing.";
+        status.className = "status error";
+      } else if (!window.mapboxgl || !window.MapboxDraw || !window.MapboxGeocoder) {
+        setupWarning.style.display = "block";
+        setupWarning.textContent = "Mapbox scripts did not load. Check internet access or allow api.mapbox.com.";
+        status.textContent = "Mapbox scripts are unavailable.";
+        status.className = "status error";
+      } else {
+        mapboxgl.accessToken = mapboxToken;
+        const map = new mapboxgl.Map({
+          container: "map",
+          style: "mapbox://styles/mapbox/satellite-streets-v12",
+          center: [32.5825, 0.3476],
+          zoom: 13,
+          attributionControl: true,
+          preserveDrawingBuffer: false
+        });
+
+        map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-left");
+        map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-left");
+
+        const geocoder = new MapboxGeocoder({
+          accessToken: mapboxToken,
+          mapboxgl,
+          marker: true,
+          placeholder: "Search region, town, village, or coordinates",
+          countries: "",
+          proximity: { longitude: 32.5825, latitude: 0.3476 }
+        });
+        document.getElementById("geocoder").appendChild(geocoder.onAdd(map));
+
+        const draw = new MapboxDraw({
+          displayControlsDefault: false,
+          controls: {
+            polygon: true,
+            trash: true
+          },
+          defaultMode: "draw_polygon",
+          styles: boundaryStyles
+        });
+        map.addControl(draw, "top-left");
+
+        function updateBoundary() {
+          const collection = draw.getAll();
+          const polygon = collection.features.find((feature) => feature.geometry.type === "Polygon");
+
+          if (!polygon) {
+            selectedBoundary = null;
+            preview.textContent = "No boundary yet.";
+            save.disabled = true;
+            analyze.disabled = true;
+            fitBoundary.disabled = true;
+            savedFarmId = null;
+            status.textContent = "Draw a polygon boundary on the map.";
+            status.className = "status";
+            return;
+          }
+
+          selectedBoundary = {
+            type: "Polygon",
+            coordinates: polygon.geometry.coordinates
+          };
+          preview.textContent = JSON.stringify(selectedBoundary, null, 2);
+          save.disabled = false;
+          fitBoundary.disabled = false;
+          status.textContent = "Boundary ready.";
+          status.className = "status";
+        }
+
+        function fitSelectedBoundary() {
+          if (!selectedBoundary) {
+            return;
+          }
+
+          const bounds = new mapboxgl.LngLatBounds();
+          selectedBoundary.coordinates[0].forEach((coordinate) => bounds.extend(coordinate));
+          map.fitBounds(bounds, { padding: 48, maxZoom: 17 });
+        }
+
+        map.on("draw.create", () => {
+          const features = draw.getAll().features;
+          if (features.length > 1) {
+            features.slice(0, -1).forEach((feature) => draw.delete(feature.id));
+          }
+          updateBoundary();
+          fitSelectedBoundary();
+        });
+        map.on("draw.update", updateBoundary);
+        map.on("draw.delete", updateBoundary);
+
+        document.getElementById("clear").addEventListener("click", () => {
+          draw.deleteAll();
+          updateBoundary();
+        });
+
+        fitBoundary.addEventListener("click", fitSelectedBoundary);
+      }
+
+      document.getElementById("farm-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!selectedBoundary) {
+          return;
+        }
+
+        save.disabled = true;
+        status.textContent = "Saving farm...";
+        status.className = "status";
+
+        const payload = {
+          name: document.getElementById("name").value,
+          crop: document.getElementById("crop").value,
+          planting_date: document.getElementById("planting-date").value || null,
+          irrigation_type: document.getElementById("irrigation-type").value,
+          notes: document.getElementById("notes").value || null,
+          boundary: selectedBoundary
+        };
+
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/v1/farms`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Id": userId
+            },
+            body: JSON.stringify(payload)
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "Could not save farm");
+          }
+          status.textContent = `Saved ${body.farm.name} (${body.farm.area_hectares} ha).`;
+          status.className = "status";
+          savedFarmId = body.farm.id;
+          dashboardFarm.textContent = `${body.farm.name} (${body.farm.area_hectares} ha)`;
+          analyze.disabled = false;
+          reportRunAnalysis.disabled = false;
+          analysisStatus.textContent = "Farm saved. Run analysis to generate the report.";
+          showView("report-view");
+        } catch (error) {
+          status.textContent = error.message;
+          status.className = "status error";
+        } finally {
+          save.disabled = !selectedBoundary;
+        }
+      });
+
+      async function runAnalysis() {
+        if (!savedFarmId) {
+          return;
+        }
+
+        analyze.disabled = true;
+        reportRunAnalysis.disabled = true;
+        analysisStatus.innerHTML = '<div class="analysis-card"><strong>Analysis</strong><span>Starting...</span></div>';
+        showView("report-view");
+
+        try {
+          const startResponse = await fetch(`${apiBaseUrl}/api/v1/farms/${savedFarmId}/analyses`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Id": userId
+            }
+          });
+          const startBody = await startResponse.json();
+          if (!startResponse.ok) {
+            throw new Error(startBody.detail || "Could not start analysis");
+          }
+
+          const analysisId = startBody.analysis_id;
+          latestAnalysisId = analysisId;
+          for (let attempt = 0; attempt < 60; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const response = await fetch(`${apiBaseUrl}/api/v1/analyses/${analysisId}`, {
+              headers: { "X-User-Id": userId }
+            });
+            const body = await response.json();
+            if (!response.ok) {
+              throw new Error(body.detail || "Could not load analysis");
+            }
+
+            if (body.status === "completed") {
+              renderAnalysisReport(body);
+              return;
+            }
+
+            if (body.status === "failed") {
+              throw new Error(body.error_message || "Analysis failed");
+            }
+
+            analysisStatus.innerHTML = `<div class="analysis-card"><strong>Analysis</strong><span>${body.status}...</span></div>`;
+          }
+
+          analysisStatus.innerHTML = '<div class="analysis-card"><strong>Analysis</strong><span>Still processing.</span></div>';
+        } catch (error) {
+          analysisStatus.textContent = error.message;
+          analysisStatus.className = "status error";
+        } finally {
+          analyze.disabled = false;
+          reportRunAnalysis.disabled = !savedFarmId;
+        }
+      }
+
+      analyze.addEventListener("click", runAnalysis);
+      reportRunAnalysis.addEventListener("click", runAnalysis);
+
+      generateRecommendations.addEventListener("click", async () => {
+        if (!latestAnalysisId) {
+          return;
+        }
+
+        generateRecommendations.disabled = true;
+        recommendationsStatus.innerHTML =
+          '<div class="analysis-card"><strong>Recommendations</strong><span>Generating...</span></div>';
+        showView("recommendations-view");
+
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/v1/analyses/${latestAnalysisId}/recommendations`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Id": userId
+            }
+          });
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "Could not generate recommendations");
+          }
+          renderRecommendations(body);
+        } catch (error) {
+          recommendationsStatus.textContent = error.message;
+          recommendationsStatus.className = "status error";
+        } finally {
+          generateRecommendations.disabled = !latestAnalysisId;
+        }
+      });
+
+      updateDashboard();
+    </script>
+  </body>
+</html>
