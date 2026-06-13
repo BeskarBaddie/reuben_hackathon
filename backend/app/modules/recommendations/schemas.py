@@ -16,6 +16,7 @@ class ActionGrounding(BaseModel):
 class RecommendationAction(BaseModel):
     priority: int
     action: str
+    steps: list[str] = []
     reason: str
     evidence: list[str]
     grounding: ActionGrounding | None = None

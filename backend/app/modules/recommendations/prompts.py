@@ -6,7 +6,7 @@ guidance passages. This module only owns the instruction text and the structured
 output contract.
 """
 
-PROMPT_VERSION = "recommendations.v5"
+PROMPT_VERSION = "recommendations.v6"
 
 RECOMMENDATION_SYSTEM_PROMPT = """
 You write farmer-friendly climate adaptation recommendations from provided evidence only.
@@ -26,16 +26,19 @@ Produce:
 - "narrative": a short prose explanation (3-6 sentences) that ties the farm's evidence and the forecast to the
   recommended actions, written plainly for a smallholder farmer.
 - "forecast_summary": one or two sentences describing the near-term outlook from the forecast evidence.
-- "actions": a prioritised list of 3 to 5 concrete actions (most important first). Make every action
-  descriptive and directly actionable for a smallholder farmer who will carry it out by hand:
-  * "action": state exactly WHAT to do, HOW to do it, and WHEN/how often, in plain language. Prefer a
-    specific method and a rough quantity or timing the farmer can act on (for example "spread a layer of
-    crop-residue mulch about a hand's depth around the base of the plants" rather than "use mulch"), but
-    never invent precise figures, products, or dates that are not supported by the evidence or passages.
+- "actions": a prioritised list of 3 to 5 actions (most important first). Each action is a task the farmer
+  carries out as a short, ordered sequence of steps they can follow by hand:
+  * "action": a short imperative title for the task (for example "Mulch the soil around the maize").
+  * "steps": an ordered list of 2 to 4 short, specific steps that say exactly WHAT to do, HOW, and WHEN.
+    Each step is one concrete instruction the farmer can act on (for example "Gather dry crop residue or
+    grass from around the farm", then "Spread it about a hand's depth over the bare soil around the
+    plants"). Prefer a concrete method and a rough quantity or timing, but never invent precise figures,
+    products, or dates that are not supported by the evidence or passages.
   * "reason": one or two sentences explaining why this helps THIS farm, tied to its specific evidence
     (crop stage, irrigation type, current risk, forecast, or farmer notes).
   * "evidence": the evidence fields or passage facts the action rests on.
-  Avoid vague verbs like "monitor", "consider", or "manage" unless you spell out the concrete steps.
+  Make the steps genuinely actionable; avoid vague verbs like "monitor", "consider", or "manage" as a
+  step unless you spell out the concrete actions involved.
 """.strip()
 
 RECOMMENDATION_JSON_SCHEMA = {
@@ -53,10 +56,16 @@ RECOMMENDATION_JSON_SCHEMA = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["priority", "action", "reason", "evidence"],
+                "required": ["priority", "action", "steps", "reason", "evidence"],
                 "properties": {
                     "priority": {"type": "integer", "minimum": 1, "maximum": 6},
                     "action": {"type": "string"},
+                    "steps": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "maxItems": 5,
+                    },
                     "reason": {"type": "string"},
                     "evidence": {
                         "type": "array",

@@ -200,7 +200,8 @@ def attach_action_grounding(output: dict, passages: list[RetrievedPassage]) -> N
 
     threshold = settings.retrieval_grounding_threshold
     for action in actions:
-        claim = f"{action.get('action', '')}. {action.get('reason', '')}".strip()
+        steps_text = " ".join(action.get("steps", []) or [])
+        claim = f"{action.get('action', '')}. {steps_text} {action.get('reason', '')}".strip()
         query_vector = embed_text(claim)
         if query_vector is None:
             continue
@@ -298,19 +299,34 @@ def generate_deterministic_recommendations(
             [
                 {
                     "priority": 1,
-                    "action": "Mulch exposed soil around the crop",
+                    "action": "Mulch the soil around the crop",
+                    "steps": [
+                        "Gather dry crop residue, grass, or leaf litter from around the farm.",
+                        "Spread it in an even layer over the bare soil around the base of the plants.",
+                        "Keep the layer about a hand's depth and top it up as it breaks down.",
+                    ],
                     "reason": "Mulch reduces evaporation and helps keep moisture in the root zone.",
                     "evidence": risk["drought_drivers"][:2] or ["Drought risk is high"],
                 },
                 {
                     "priority": 2,
-                    "action": "Prioritize any available irrigation for the most stressed parts of the field",
+                    "action": "Prioritize scarce water for the most stressed parts of the field",
+                    "steps": [
+                        "Identify the driest or most wilted parts of the field.",
+                        "Water those areas first, in the early morning or late evening.",
+                        "Apply enough to wet the root zone rather than many shallow waterings.",
+                    ],
                     "reason": "Targeted watering protects the crop when rainfall is well below normal.",
                     "evidence": risk["drought_drivers"][:2] or ["Water stress risk is high"],
                 },
                 {
                     "priority": 3,
-                    "action": "Delay fertilizer application until soil moisture improves",
+                    "action": "Delay fertilizer until soil moisture improves",
+                    "steps": [
+                        "Hold off on applying fertilizer while the soil is dry.",
+                        "Wait until rain or irrigation has restored soil moisture.",
+                        "Then apply in smaller split amounts at the right growth stage.",
+                    ],
                     "reason": "Fertilizer is less effective and can damage crops when the soil is too dry.",
                     "evidence": risk["drought_drivers"][:2] or ["Vegetation stress is present"],
                 },
@@ -321,7 +337,12 @@ def generate_deterministic_recommendations(
         actions.append(
             {
                 "priority": len(actions) + 1,
-                "action": "Clear drainage channels before the next heavy rainfall",
+                "action": "Clear drainage before the next heavy rainfall",
+                "steps": [
+                    "Walk the field and find blocked channels and furrows.",
+                    "Clear debris and silt so water can flow away from the crop.",
+                    "Finish this before the next expected heavy rain.",
+                ],
                 "reason": "Improving water flow reduces standing water around crop roots.",
                 "evidence": risk["flood_drivers"][:2] or ["Flood risk is elevated"],
             }
@@ -331,7 +352,12 @@ def generate_deterministic_recommendations(
         actions.append(
             {
                 "priority": len(actions) + 1,
-                "action": "Avoid spraying or fertilizer application during the hottest part of the day",
+                "action": "Time spraying and fertilizer for the cooler hours",
+                "steps": [
+                    "Plan spraying and fertilizer for early morning or late afternoon.",
+                    "Avoid the hottest midday hours.",
+                    "Check the forecast and skip application on the hottest days.",
+                ],
                 "reason": "Heat can increase crop stress and reduce input effectiveness.",
                 "evidence": risk["heat_drivers"][:2] or ["Heat stress risk is elevated"],
             }
@@ -341,7 +367,12 @@ def generate_deterministic_recommendations(
         actions.append(
             {
                 "priority": 1,
-                "action": "Continue monitoring crop condition weekly",
+                "action": "Check the crop each week",
+                "steps": [
+                    "Walk the whole field at least once a week.",
+                    "Look for changes in colour, wilting, pests, or disease.",
+                    "Note anything unusual and act early if conditions worsen.",
+                ],
                 "reason": "Current risk indicators do not show an urgent climate threat.",
                 "evidence": ["Overall risk level is low"],
             }

@@ -783,13 +783,6 @@
         const insufficientData =
           citations.length === 0 || /insufficient/.test(recommendation.provider || "");
 
-        const provenanceLabel = insufficientData
-          ? "Not grounded in crop-specific documents"
-          : recommendation.provider === "deterministic" ||
-              recommendation.provider === "deterministic_fallback"
-            ? "Worded by rule-based engine, grounded in the documents below"
-            : `Worded by ${escapeHtml(recommendation.model || recommendation.provider)}, grounded in the documents below`;
-
         const caveatBanner = insufficientData
           ? `<div class="analysis-card" style="border-left: 4px solid #c08a1e; background: #fbf4e6;">
                <strong>⚠ Limited data for this crop</strong>
@@ -821,7 +814,6 @@
           <div class="analysis-card">
             <strong>Adaptation plan</strong>
             ${insufficientData ? "" : `<span>${escapeHtml(output.summary)}</span>`}
-            <span style="color: var(--muted);">${riskBadge(recommendation.provider)} ${provenanceLabel} · Prompt: ${escapeHtml(recommendation.prompt_version)}</span>
           </div>
           ${output.narrative ? `<div class="analysis-card" style="margin-top: 12px;"><strong>Summary</strong><span>${escapeHtml(output.narrative)}</span></div>` : ""}
           ${output.forecast_summary ? `<div class="analysis-card" style="margin-top: 12px;"><strong>Forecast (next 14 days)</strong><span>${escapeHtml(output.forecast_summary)}</span></div>` : ""}
@@ -831,8 +823,14 @@
                   (action) => `
                     <li class="action-item">
                       <div style="display: flex; align-items: center; gap: 10px;"><span class="priority">${action.priority}</span><strong>${escapeHtml(action.action)}</strong></div>
+                      ${
+                        action.steps && action.steps.length
+                          ? `<ol style="margin: 6px 0 2px; padding-left: 20px;">${action.steps
+                              .map((step) => `<li style="margin-bottom: 3px;">${escapeHtml(step)}</li>`)
+                              .join("")}</ol>`
+                          : ""
+                      }
                       <span>${escapeHtml(action.reason)}</span>
-                      <span>Evidence: ${action.evidence.map(escapeHtml).join("; ")}</span>
                       ${groundingHtml(action.grounding)}
                     </li>
                   `
