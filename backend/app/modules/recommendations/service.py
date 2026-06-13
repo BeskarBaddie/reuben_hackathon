@@ -383,12 +383,13 @@ def generate_ollama_recommendations(evidence: dict, context: str) -> dict:
                     ),
                 },
             ],
+            "keep_alive": "30m",
             "options": {
                 "temperature": 0.2,
                 "num_predict": 1100,
             },
         },
-        timeout=120,
+        timeout=300,
     )
     response.raise_for_status()
     data = response.json()
