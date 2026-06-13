@@ -11,9 +11,18 @@ class RecommendationAction(BaseModel):
     evidence: list[str]
 
 
+class RecommendationCitation(BaseModel):
+    doc_id: str
+    title: str
+    source: str
+
+
 class RecommendationOutput(BaseModel):
     summary: str
+    narrative: str
+    forecast_summary: str
     actions: list[RecommendationAction]
+    citations: list[RecommendationCitation] = []
 
 
 class RecommendationRead(BaseModel):

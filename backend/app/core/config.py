@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     climate_season_days: int = Field(default=90, alias="CLIMATE_SEASON_DAYS")
     climate_baseline_start_year: int = Field(default=2001, alias="CLIMATE_BASELINE_START_YEAR")
     climate_baseline_end_year: int = Field(default=2020, alias="CLIMATE_BASELINE_END_YEAR")
+    forecast_provider: str = Field(default="mock", alias="FORECAST_PROVIDER")
+    forecast_horizon_days: int = Field(default=14, alias="FORECAST_HORIZON_DAYS")
     recommendation_provider: str = Field(default="deterministic", alias="RECOMMENDATION_PROVIDER")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.5", alias="OPENAI_MODEL")
