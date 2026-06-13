@@ -165,7 +165,37 @@ OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-5.5
 ```
 
-The LLM receives only the stored evidence snapshot and must return JSON matching the recommendation schema. It does not calculate NDVI, climate anomalies, or risk scores.
+Put `OPENAI_API_KEY` in `backend/.env` for local development. Do not put it in frontend files or commit it to GitHub.
+
+To use Ollama locally without paid API credits:
+
+```bash
+RECOMMENDATION_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.1:latest
+```
+
+Start Ollama locally and make sure the selected model exists:
+
+```bash
+ollama serve
+ollama pull llama3.1
+```
+
+The LLM receives only:
+
+- A compact system instruction
+- A selected agricultural context pack for the farm crop / irrigation setup
+- The stored evidence snapshot, including crop, planting date, irrigation type, farmer notes, vegetation indicators, climate summaries, and deterministic risk scores
+
+It must return JSON matching the recommendation schema. It does not calculate NDVI, climate anomalies, or risk scores.
+
+The recommendation prompt is designed for token efficiency:
+
+- Stable instructions and context are placed before farm-specific evidence so provider-side prompt caching can help.
+- Only relevant crop and irrigation context is included, not every possible guideline document.
+- Farm-specific evidence is serialized compactly.
+- Output is capped with `max_output_tokens`.
 
 API:
 

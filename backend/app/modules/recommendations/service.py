@@ -12,6 +12,7 @@ from app.modules.recommendations.prompts import (
     PROMPT_VERSION,
     RECOMMENDATION_JSON_SCHEMA,
     RECOMMENDATION_SYSTEM_PROMPT,
+    build_recommendation_context,
 )
 from app.modules.recommendations.repository import RecommendationRepository
 from app.modules.recommendations.schemas import RecommendationOutput
@@ -60,6 +61,14 @@ class RecommendationService:
             except Exception:
                 provider = "deterministic_fallback"
                 model = settings.openai_model
+        elif settings.recommendation_provider == "ollama":
+            try:
+                output = generate_ollama_recommendations(evidence)
+                provider = "ollama"
+                model = settings.ollama_model
+            except Exception:
+                provider = "deterministic_fallback"
+                model = settings.ollama_model
 
         validated = RecommendationOutput.model_validate(output).model_dump()
         return self.repository.create(
@@ -81,6 +90,7 @@ def build_evidence_snapshot(farm: Farm, analysis: FarmAnalysis) -> dict:
             "area_hectares": farm.area_hectares,
             "planting_date": farm.planting_date.isoformat() if farm.planting_date else None,
             "irrigation_type": farm.irrigation_type.value,
+            "farmer_notes": farm.notes or "insufficient data",
         },
         "vegetation": {
             "ndvi": analysis.ndvi,
@@ -188,19 +198,27 @@ def generate_deterministic_recommendations(evidence: dict) -> dict:
 
 
 def generate_openai_recommendations(evidence: dict) -> dict:
+    context = build_recommendation_context(evidence)
+    compact_evidence = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
     payload = {
         "model": settings.openai_model,
         "input": [
             {"role": "system", "content": RECOMMENDATION_SYSTEM_PROMPT},
             {
+                "role": "system",
+                "content": f"Agricultural context for this request:\n{context}",
+            },
+            {
                 "role": "user",
                 "content": (
                     "Generate farmer-friendly adaptation recommendations from this evidence. "
-                    "Use only the evidence fields provided.\n\n"
-                    f"{json.dumps(evidence, sort_keys=True)}"
+                    "Use only the evidence fields provided. Keep actions concise and directly tied to evidence.\n\n"
+                    f"{compact_evidence}"
                 ),
             },
         ],
+        "max_output_tokens": 900,
+        "prompt_cache_key": f"recommendations:{PROMPT_VERSION}:{settings.openai_model}",
         "text": {
             "format": {
                 "type": "json_schema",
@@ -234,3 +252,42 @@ def generate_openai_recommendations(evidence: dict) -> dict:
     if not text:
         raise RuntimeError("OpenAI response did not contain output text")
     return json.loads(text)
+
+
+def generate_ollama_recommendations(evidence: dict) -> dict:
+    context = build_recommendation_context(evidence)
+    compact_evidence = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+    response = httpx.post(
+        f"{settings.ollama_base_url.rstrip('/')}/api/chat",
+        json={
+            "model": settings.ollama_model,
+            "stream": False,
+            "format": RECOMMENDATION_JSON_SCHEMA,
+            "messages": [
+                {"role": "system", "content": RECOMMENDATION_SYSTEM_PROMPT},
+                {
+                    "role": "system",
+                    "content": f"Agricultural context for this request:\n{context}",
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Generate farmer-friendly adaptation recommendations from this evidence. "
+                        "Use only the evidence fields provided. Return only JSON.\n\n"
+                        f"{compact_evidence}"
+                    ),
+                },
+            ],
+            "options": {
+                "temperature": 0.2,
+                "num_predict": 900,
+            },
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    data = response.json()
+    content = data.get("message", {}).get("content")
+    if not content:
+        raise RuntimeError("Ollama response did not contain message content")
+    return json.loads(content)

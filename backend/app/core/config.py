@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     recommendation_provider: str = Field(default="deterministic", alias="RECOMMENDATION_PROVIDER")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.5", alias="OPENAI_MODEL")
+    ollama_base_url: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_BASE_URL")
+    ollama_model: str = Field(default="llama3.1:latest", alias="OLLAMA_MODEL")
 
 
 @lru_cache
