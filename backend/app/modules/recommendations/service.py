@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.modules.analysis.models import FarmAnalysis
 from app.modules.analysis.schemas import AnalysisStatus
 from app.modules.farms.models import Farm
+from app.modules.knowledge.retrieval import retrieve_guidance_for_evidence
 from app.modules.recommendations.prompts import (
     PROMPT_VERSION,
     RECOMMENDATION_JSON_SCHEMA,
@@ -34,6 +35,15 @@ class RecommendationService:
             )
         return recommendation
 
+    def get_latest_for_owner(self, owner_id: UUID):
+        recommendation = self.repository.latest_for_owner(owner_id)
+        if not recommendation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recommendation not found",
+            )
+        return recommendation
+
     def generate(self, analysis_id: UUID, owner_id: UUID):
         analysis = self.repository.get_analysis_for_owner(analysis_id, owner_id)
         if not analysis:
@@ -49,6 +59,10 @@ class RecommendationService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farm not found")
 
         evidence = build_evidence_snapshot(farm, analysis)
+        evidence["retrieved_guidance"] = retrieve_guidance_for_evidence(
+            self.repository.session,
+            evidence,
+        )
         provider = "deterministic"
         model = None
         output = generate_deterministic_recommendations(evidence)
@@ -70,6 +84,7 @@ class RecommendationService:
                 provider = "deterministic_fallback"
                 model = settings.ollama_model
 
+        output = make_recommendations_actionable(evidence, output)
         validated = RecommendationOutput.model_validate(output).model_dump()
         return self.repository.create(
             analysis_id=analysis_id,
@@ -127,6 +142,115 @@ def build_evidence_snapshot(farm: Farm, analysis: FarmAnalysis) -> dict:
     }
 
 
+def make_recommendations_actionable(evidence: dict, output: dict) -> dict:
+    farm = evidence.get("farm", {})
+    risk = evidence.get("risk", {})
+    climate = evidence.get("climate", {})
+    retrieved_guidance = evidence.get("retrieved_guidance") or []
+    crop = str(farm.get("crop") or "").lower()
+    irrigation = str(farm.get("irrigation_type") or "").lower()
+    notes = str(farm.get("farmer_notes") or "").lower()
+    source_names = [item.get("source_name") for item in retrieved_guidance if item.get("source_name")]
+    primary_source = source_names[0] if source_names else "retrieved guidance unavailable"
+    drought_drivers = risk.get("drought_drivers") or []
+    heat_drivers = risk.get("heat_drivers") or []
+    specific_actions: list[dict] = []
+
+    if risk.get("drought_level") == "high" and "maize" in crop:
+        specific_actions.extend(
+            [
+                {
+                    "priority": 1,
+                    "action": "This week, cover the upper or fastest-drying maize rows with crop residue, dry grass, or weeded biomass",
+                    "reason": "The plot is rainfed, rainfall is far below normal, and the farmer notes that the upper section dries quickly.",
+                    "evidence": [
+                        *(drought_drivers[:2] or ["Drought risk is high"]),
+                        "Farmer notes: upper section dries quickly",
+                        primary_source,
+                    ],
+                },
+                {
+                    "priority": 2,
+                    "action": "Do not top-dress nitrogen until rain has wetted the root zone; then apply first to the least-stressed maize",
+                    "reason": "Fertilizer is more useful when soil moisture is available, and applying into dry soil increases input risk for a cash-constrained farmer.",
+                    "evidence": [
+                        "Farm is rainfed" if irrigation == "rainfed" else f"Irrigation type: {irrigation}",
+                        *(drought_drivers[:1] or ["Water stress is high"]),
+                        primary_source,
+                    ],
+                },
+                {
+                    "priority": 3,
+                    "action": "If any water is available, reserve it for maize near tasseling, silking, or early grain fill rather than watering the whole plot evenly",
+                    "reason": "Maize is most sensitive to drought around flowering and early grain fill, so scarce water should protect that stage first.",
+                    "evidence": [
+                        "Water stress indicator is high",
+                        "Maize sensitivity around tasseling, silking, and early grain fill",
+                        primary_source,
+                    ],
+                },
+                {
+                    "priority": 4,
+                    "action": "For next season, avoid expanding maize on the upper sandy section unless rainfall onset is reliable; keep more drought-tolerant options under review",
+                    "reason": "Rainfed maize is highly exposed when rainfall is much lower than the historical average and the driest plot section is already known.",
+                    "evidence": [
+                        f"Rainfall anomaly: {climate.get('rainfall_anomaly_percent')}%",
+                        "Farmer notes: sandy loam and upper section dries quickly",
+                        primary_source,
+                    ],
+                },
+            ]
+        )
+
+    if "lower edge" in notes or risk.get("flood_level") in {"medium", "high"}:
+        specific_actions.append(
+            {
+                "priority": len(specific_actions) + 1,
+                "action": "Keep fertilizer, seed, and loose soil away from the lower edge before intense rain; open a shallow drainage path if water stands there",
+                "reason": "The farmer notes that the lower edge can hold water after intense rainfall, even though current flood risk is low.",
+                "evidence": [
+                    "Farmer notes: lower edge can hold water after intense rainfall",
+                    *(risk.get("flood_drivers") or ["Current flood score is low, so treat this as plot-specific precaution"]),
+                ],
+            }
+        )
+
+    if risk.get("heat_level") in {"medium", "high"} or heat_drivers:
+        specific_actions.append(
+            {
+                "priority": len(specific_actions) + 1,
+                "action": "Schedule weeding, fertilizer, and any spraying for cooler morning hours while the crop is stressed",
+                "reason": "Avoiding peak heat reduces avoidable crop stress when vegetation is already stressed.",
+                "evidence": heat_drivers[:2] or ["Vegetation stress can increase heat vulnerability"],
+            }
+        )
+
+    existing_actions = output.get("actions") or []
+    merged_actions = specific_actions or existing_actions
+    if specific_actions:
+        seen = {action["action"].lower() for action in specific_actions}
+        for action in existing_actions:
+            action_text = str(action.get("action") or "").lower()
+            if action_text and action_text not in seen and len(merged_actions) < 6:
+                merged_actions.append(action)
+                seen.add(action_text)
+
+    for index, action in enumerate(merged_actions[:6], start=1):
+        action["priority"] = index
+
+    summary = output.get("summary") or "insufficient data"
+    if risk.get("drought_level") == "high" and "maize" in crop:
+        summary = (
+            "High drought risk for rainfed maize: protect soil moisture now, delay risky fertilizer use until moisture improves, "
+            "and use the farmer's upper/lower plot observations for next-season planning."
+        )
+
+    return {
+        "summary": summary,
+        "actions": merged_actions[:6],
+    }
+
+
 def generate_deterministic_recommendations(evidence: dict) -> dict:
     risk = evidence["risk"]
     farm = evidence["farm"]
@@ -137,21 +261,27 @@ def generate_deterministic_recommendations(evidence: dict) -> dict:
             [
                 {
                     "priority": 1,
-                    "action": "Mulch exposed soil around the crop",
-                    "reason": "Mulch reduces evaporation and helps keep moisture in the root zone.",
+                    "action": "Cover bare soil on the driest part of the plot within the next 7 days",
+                    "reason": "Soil cover reduces evaporation and helps keep limited moisture in the maize root zone.",
                     "evidence": risk["drought_drivers"][:2] or ["Drought risk is high"],
                 },
                 {
                     "priority": 2,
-                    "action": "Prioritize any available irrigation for the most stressed parts of the field",
-                    "reason": "Targeted watering protects the crop when rainfall is well below normal.",
+                    "action": "Use any scarce water first on maize approaching tasseling or silking",
+                    "reason": "Maize is most sensitive to drought around flowering and early grain fill.",
                     "evidence": risk["drought_drivers"][:2] or ["Water stress risk is high"],
                 },
                 {
                     "priority": 3,
-                    "action": "Delay fertilizer application until soil moisture improves",
+                    "action": "Delay nitrogen top-dressing until rain has wetted the root zone",
                     "reason": "Fertilizer is less effective and can damage crops when the soil is too dry.",
                     "evidence": risk["drought_drivers"][:2] or ["Vegetation stress is present"],
+                },
+                {
+                    "priority": 4,
+                    "action": "For next season, review planting closer to reliable rainfall onset before expanding maize area",
+                    "reason": "Rainfed maize has high exposure when seasonal rainfall is far below normal.",
+                    "evidence": risk["drought_drivers"][:2] or ["Farm is rainfed"],
                 },
             ]
         )
@@ -160,7 +290,7 @@ def generate_deterministic_recommendations(evidence: dict) -> dict:
         actions.append(
             {
                 "priority": len(actions) + 1,
-                "action": "Clear drainage channels before the next heavy rainfall",
+                "action": "Clear drainage channels and keep seed or fertilizer off the lower wet edge",
                 "reason": "Improving water flow reduces standing water around crop roots.",
                 "evidence": risk["flood_drivers"][:2] or ["Flood risk is elevated"],
             }
@@ -215,7 +345,10 @@ def generate_openai_recommendations(evidence: dict) -> dict:
                 "role": "user",
                 "content": (
                     "Generate farmer-friendly adaptation recommendations from this evidence. "
-                    "Use only the evidence fields provided. Keep actions concise and directly tied to evidence.\n\n"
+                    "Use only the evidence fields provided. Make actions practical, climate-resilient, "
+                    "and specific about timing, plot location, crop stage, or trigger when evidence supports it. "
+                    "Include planting-date, crop allocation, or higher-ground advice only when supported; "
+                    "otherwise say insufficient data.\n\n"
                     f"{compact_evidence}"
                 ),
             },
@@ -276,7 +409,10 @@ def generate_ollama_recommendations(evidence: dict) -> dict:
                     "role": "user",
                     "content": (
                         "Generate farmer-friendly adaptation recommendations from this evidence. "
-                        "Use only the evidence fields provided. Return only JSON.\n\n"
+                        "Use only the evidence fields provided. Make actions practical, climate-resilient, "
+                        "and specific about timing, plot location, crop stage, or trigger when evidence supports it. "
+                        "Include planting-date, crop allocation, or higher-ground advice only when supported; "
+                        "otherwise say insufficient data. Return only JSON.\n\n"
                         f"{compact_evidence}"
                     ),
                 },

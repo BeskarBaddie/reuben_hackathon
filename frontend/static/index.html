@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Climate Intelligence</title>
+    <title>AgriShield</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
     <link
       href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css"
@@ -323,9 +323,9 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">CI</div>
+          <div class="brand-mark">AS</div>
           <div>
-            <strong>ClimateIQ</strong>
+            <strong>AgriShield</strong>
             <span>Plot Intelligence</span>
           </div>
         </div>
@@ -388,6 +388,10 @@
                     <p id="dashboard-analysis">No analysis run yet.</p>
                     <div id="dashboard-risk-breakdown" class="grid" style="margin-top: 14px;"></div>
                   </div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div><h2>Saved Recommendation</h2><p>Most recent adaptation plan</p></div></div>
+                  <div id="dashboard-recommendation-summary" class="card-body empty-state">No recommendations saved yet.</div>
                 </div>
                 <div class="card">
                   <div class="card-header"><div><h2>Next Actions</h2><p>Most common workflow shortcuts</p></div></div>
@@ -559,6 +563,7 @@
       const dashboardRecommendationMetric = document.getElementById("dashboard-recommendation-metric");
       const dashboardFarmTable = document.getElementById("dashboard-farm-table");
       const dashboardRiskBreakdown = document.getElementById("dashboard-risk-breakdown");
+      const dashboardRecommendationSummary = document.getElementById("dashboard-recommendation-summary");
       const dashboardRunAnalysis = document.getElementById("dashboard-run-analysis");
       const farmsTable = document.getElementById("farms-table");
       const farmDetail = document.getElementById("farm-detail");
@@ -741,6 +746,7 @@
             <div class="analysis-card"><strong>Heat stress</strong><span>${riskBadge(latestAnalysis.heat_level)} ${formatValue(latestAnalysis.heat_score)}</span></div>
           `
           : '<div class="empty-state">Run an analysis to populate risk scores.</div>';
+        renderDashboardRecommendation();
         renderFarmRows(dashboardFarmTable, farms.slice(0, 5));
         renderFarmRows(farmsTable, farms);
         renderFarmDetail();
@@ -799,6 +805,61 @@
           </ol>
         `;
         renderAll();
+      }
+
+      function hydrateLatestAnalysisFromRecommendation(recommendation) {
+        const evidence = recommendation?.evidence_snapshot || {};
+        const vegetation = evidence.vegetation || {};
+        const climate = evidence.climate || {};
+        const risk = evidence.risk || {};
+        latestAnalysisId = recommendation?.analysis_id || latestAnalysisId;
+        latestAnalysis = {
+          id: latestAnalysisId,
+          status: "completed",
+          ndvi: vegetation.ndvi,
+          vegetation_health: vegetation.vegetation_health,
+          water_stress: vegetation.water_stress,
+          image_date: vegetation.image_date,
+          source: vegetation.source,
+          rainfall_this_season_mm: climate.rainfall_this_season_mm,
+          rainfall_historical_average_mm: climate.rainfall_historical_average_mm,
+          rainfall_anomaly_percent: climate.rainfall_anomaly_percent,
+          temperature_this_season_c: climate.temperature_this_season_c,
+          temperature_anomaly_c: climate.temperature_anomaly_c,
+          climate_signal: climate.climate_signal,
+          drought_score: risk.drought_score,
+          drought_level: risk.drought_level,
+          drought_drivers: risk.drought_drivers || [],
+          flood_score: risk.flood_score,
+          flood_level: risk.flood_level,
+          flood_drivers: risk.flood_drivers || [],
+          heat_score: risk.heat_score,
+          heat_level: risk.heat_level,
+          heat_drivers: risk.heat_drivers || [],
+          overall_risk_level: risk.overall_risk_level,
+        };
+      }
+
+      function renderDashboardRecommendation() {
+        if (!latestRecommendation?.output) {
+          dashboardRecommendationSummary.className = "card-body empty-state";
+          dashboardRecommendationSummary.textContent = "No recommendations saved yet.";
+          return;
+        }
+
+        const actions = latestRecommendation.output.actions || [];
+        dashboardRecommendationSummary.className = "card-body";
+        dashboardRecommendationSummary.innerHTML = `
+          <p>${escapeHtml(latestRecommendation.output.summary)}</p>
+          <ol class="action-list" style="margin-top: 12px;">
+            ${actions.slice(0, 3).map((action) => `
+              <li class="action-item">
+                <div style="display: flex; align-items: center; gap: 10px;"><span class="priority">${action.priority}</span><strong>${escapeHtml(action.action)}</strong></div>
+                <span>${escapeHtml(action.reason)}</span>
+              </li>
+            `).join("")}
+          </ol>
+        `;
       }
 
       const boundaryStyles = [
@@ -1145,6 +1206,28 @@
         await generateRecommendationsForLatest({ showPage: true });
       });
 
+      async function loadLatestRecommendation() {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/v1/recommendations/latest`, {
+            headers: { "X-User-Id": userId }
+          });
+          if (response.status === 404) {
+            latestRecommendation = null;
+            return;
+          }
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(body.detail || "Could not load latest recommendation");
+          }
+          latestRecommendation = body;
+          hydrateLatestAnalysisFromRecommendation(body);
+          renderRecommendations(body);
+        } catch (error) {
+          dashboardRecommendationSummary.className = "card-body status error";
+          dashboardRecommendationSummary.textContent = error.message;
+        }
+      }
+
       async function loadFarms() {
         try {
           const response = await fetch(`${apiBaseUrl}/api/v1/farms`, {
@@ -1169,7 +1252,13 @@
         }
       }
 
-      loadFarms();
+      async function boot() {
+        await loadFarms();
+        await loadLatestRecommendation();
+        renderAll();
+      }
+
+      boot();
     </script>
   </body>
 </html>

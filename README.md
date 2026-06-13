@@ -210,3 +210,53 @@ The static local UI is now split into:
 - Register
 - Report
 - Recommendations
+
+## Knowledge Base: Google Drive Crop Guidance
+
+The recommendation engine can retrieve crop guidance from documents synced from Google Drive. This keeps prompts small: the app indexes documents once, retrieves the most relevant chunks for the plot/crop/risk context, and sends only those chunks to the LLM.
+
+Configure:
+
+```bash
+GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_PATH=/absolute/path/to/drive-service-account.json
+GOOGLE_DRIVE_FOLDER_IDS=["folder_id_1","folder_id_2"]
+KNOWLEDGE_MAX_CHUNKS=6
+```
+
+Sync documents:
+
+```http
+POST /api/v1/knowledge/sync
+```
+
+Optional body:
+
+```json
+{
+  "folder_ids": ["folder_id_1"],
+  "max_files": 50
+}
+```
+
+Search indexed guidance:
+
+```http
+POST /api/v1/knowledge/search
+```
+
+```json
+{
+  "query": "maize drought water stress rainfed",
+  "crop": "maize",
+  "limit": 6
+}
+```
+
+Supported document types:
+
+- Google Docs, exported as plain text
+- Plain text / Markdown / CSV
+- PDF, via `pypdf`
+- DOCX, via `python-docx`
+
+The recommendation prompt receives retrieved chunks under `retrieved_guidance` and cites source names in the recommendation evidence.

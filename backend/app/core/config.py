@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-5.5", alias="OPENAI_MODEL")
     ollama_base_url: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="llama3.1:latest", alias="OLLAMA_MODEL")
+    google_drive_service_account_key_path: str | None = Field(
+        default=None,
+        alias="GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_PATH",
+    )
+    google_drive_folder_ids: list[str] = Field(default=[], alias="GOOGLE_DRIVE_FOLDER_IDS")
+    knowledge_max_chunks: int = Field(default=6, alias="KNOWLEDGE_MAX_CHUNKS")
 
 
 @lru_cache

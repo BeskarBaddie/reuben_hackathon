@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.modules.analysis.router import router as analysis_router
 from app.modules.farms.router import router as farms_router
+from app.modules.knowledge.router import router as knowledge_router
 from app.modules.recommendations.router import router as recommendations_router
 
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(farms_router, prefix="/api/v1")
     app.include_router(analysis_router, prefix="/api/v1")
     app.include_router(recommendations_router, prefix="/api/v1")
+    app.include_router(knowledge_router, prefix="/api/v1")
 
     @app.on_event("startup")
     def create_tables_for_local_development() -> None:
