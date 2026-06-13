@@ -232,6 +232,9 @@
       .badge.high, .badge.critical { background: var(--red-soft); color: var(--danger); }
       .badge.unknown, .badge.pending { background: var(--muted); color: var(--muted-foreground); }
       .badge.success { background: var(--accent-soft); color: #2d6a4f; }
+      .badge.advisory { background: var(--blue-soft); color: #2563eb; }
+      .badge.watch { background: var(--amber-soft); color: var(--warning); }
+      .badge.urgent { background: var(--red-soft); color: var(--danger); }
 
       form { display: grid; gap: 15px; }
       .form-row { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -295,6 +298,27 @@
         padding: 14px;
       }
       .priority { background: var(--primary); border-radius: 6px; color: #fff; display: inline-grid; font-weight: 800; height: 26px; place-items: center; width: 26px; }
+      .alert-list { display: grid; gap: 12px; }
+      .alert-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        display: grid;
+        gap: 9px;
+        padding: 14px;
+      }
+      .alert-card header {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+      .alert-meta {
+        color: var(--muted-foreground);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        gap: 8px;
+      }
       .empty-state { color: var(--muted-foreground); display: grid; gap: 10px; justify-items: start; padding: 24px; }
       .settings-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .plot-snapshot {
@@ -336,6 +360,7 @@
           <button class="nav-button" data-view="farm-detail-view" type="button"><span class="nav-icon">I</span>Plot profile</button>
           <button class="nav-button" data-view="report-view" type="button"><span class="nav-icon">R</span>Report</button>
           <button class="nav-button" data-view="recommendations-view" type="button"><span class="nav-icon">G</span>Recommendations</button>
+          <button class="nav-button" data-view="community-alerts-view" type="button"><span class="nav-icon">C</span>Community alerts</button>
           <button class="nav-button" data-view="settings-view" type="button"><span class="nav-icon">S</span>Settings</button>
         </nav>
         <div class="sidebar-footer">v0.1.0 · Local build</div>
@@ -512,6 +537,37 @@
           </div>
         </section>
 
+        <section id="community-alerts-view" class="view">
+          <div class="page grid">
+            <div class="grid summary-grid">
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--red-soft); color: var(--danger);">!</div>
+                <div><div class="metric-label">Active Alerts</div><div id="community-alert-count" class="metric-value">0</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--accent-soft); color: #2d6a4f;">R</div>
+                <div><div class="metric-label">Community Zone</div><div class="metric-value">50 km²</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--blue-soft); color: #2563eb;">P</div>
+                <div><div class="metric-label">Nearby Plots</div><div id="community-plot-count" class="metric-value">0</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--amber-soft); color: var(--warning);">U</div>
+                <div><div class="metric-label">UV / Heat Watch</div><div id="community-uv-status" class="metric-value">Watch</div></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div><h2>Community Alerts</h2><p>Dummy feed from farmer notes and nearby observations within the surrounding 50 km² community zone.</p></div>
+                <button id="refresh-community-alerts" class="secondary-button" type="button">Refresh</button>
+              </div>
+              <div id="community-alerts" class="card-body alert-list"></div>
+            </div>
+          </div>
+        </section>
+
         <section id="settings-view" class="view">
           <div class="page grid settings-grid">
             <div class="card">
@@ -568,6 +624,11 @@
       const farmsTable = document.getElementById("farms-table");
       const farmDetail = document.getElementById("farm-detail");
       const detailRunAnalysis = document.getElementById("detail-run-analysis");
+      const communityAlerts = document.getElementById("community-alerts");
+      const communityAlertCount = document.getElementById("community-alert-count");
+      const communityPlotCount = document.getElementById("community-plot-count");
+      const communityUvStatus = document.getElementById("community-uv-status");
+      const refreshCommunityAlerts = document.getElementById("refresh-community-alerts");
       const settingsBackendStatus = document.getElementById("settings-backend-status");
       const setupWarning = document.getElementById("setup-warning");
       let selectedBoundary = null;
@@ -586,6 +647,7 @@
         "farm-detail-view": ["Plot profile", "Review the selected plot and workflow state."],
         "report-view": ["Analysis report", "Satellite, climate, and deterministic risk outputs."],
         "recommendations-view": ["Recommendations", "Farmer-friendly adaptation actions generated from evidence."],
+        "community-alerts-view": ["Community alerts", "Shared nearby warnings from farmer observations and climate signals."],
         "settings-view": ["Settings", "Local backend, map, and model-provider configuration."],
       };
 
@@ -731,6 +793,129 @@
         `;
       }
 
+      function buildCommunityAlerts() {
+        const alerts = [
+          {
+            type: "Weather",
+            severity: "watch",
+            title: "Heavy rainfall reported east of the community zone",
+            message: "Two nearby farmers reported standing water after intense evening rain. Check low edges, open shallow drains, and keep fertilizer away from runoff paths.",
+            distance: "8 km",
+            source: "3 farmer notes",
+            time: "2 hours ago",
+          },
+          {
+            type: "Pest",
+            severity: "advisory",
+            title: "Leaf folder and stem borer scouting reminder",
+            message: "Rice and maize plots nearby have mentioned leaf damage. Inspect field margins and shaded sections before applying any control measure.",
+            distance: "14 km",
+            source: "Community observation",
+            time: "Today",
+          },
+          {
+            type: "Heat",
+            severity: "watch",
+            title: "High UV and afternoon heat watch",
+            message: "Avoid spraying, fertilizer handling, and strenuous field work during peak afternoon heat. Prefer early morning checks while crops are stressed.",
+            distance: "Community-wide",
+            source: "Dummy climate alert",
+            time: "Today",
+          },
+        ];
+
+        farms.forEach((farm) => {
+          const notes = String(farm.notes || "").toLowerCase();
+          if (notes.includes("flood") || notes.includes("water") || notes.includes("rain") || notes.includes("low-lying")) {
+            alerts.unshift({
+              type: "Flood",
+              severity: notes.includes("flood") || notes.includes("low-lying") ? "urgent" : "watch",
+              title: `Waterlogging note near ${farm.name}`,
+              message: "A farmer note mentions water retention, intense rain, or flood-prone ground. Nearby plots should check drainage and avoid placing fertilizer on lower edges.",
+              distance: "Within 50 km² zone",
+              source: "Farmer note",
+              time: "Recently saved",
+            });
+          }
+          if (notes.includes("pest") || notes.includes("borer") || notes.includes("worm") || notes.includes("leaf")) {
+            alerts.unshift({
+              type: "Pest",
+              severity: "watch",
+              title: `Pest scouting note near ${farm.name}`,
+              message: "A nearby note mentions pest or leaf symptoms. Scout field margins and compare damage before taking action.",
+              distance: "Within 50 km² zone",
+              source: "Farmer note",
+              time: "Recently saved",
+            });
+          }
+          if (notes.includes("dry") || notes.includes("drought") || notes.includes("hot")) {
+            alerts.unshift({
+              type: "Drought",
+              severity: "watch",
+              title: `Dryness note near ${farm.name}`,
+              message: "A farmer note mentions dry or hot conditions. Prioritize soil cover, avoid fertilizer into dry soil, and watch stressed crop stages.",
+              distance: "Within 50 km² zone",
+              source: "Farmer note",
+              time: "Recently saved",
+            });
+          }
+        });
+
+        if (latestAnalysis?.flood_level === "medium" || latestAnalysis?.flood_level === "high") {
+          alerts.unshift({
+            type: "Flood",
+            severity: latestAnalysis.flood_level === "high" ? "urgent" : "watch",
+            title: "Elevated flood risk from latest analysis",
+            message: "The selected plot has elevated flood risk. Nearby farmers should inspect drainage channels and avoid field traffic on saturated soil.",
+            distance: "Selected plot area",
+            source: "Latest risk analysis",
+            time: "Now",
+          });
+        }
+
+        if (latestAnalysis?.heat_level === "medium" || latestAnalysis?.heat_level === "high") {
+          alerts.unshift({
+            type: "Heat",
+            severity: "watch",
+            title: "Heat stress risk near selected plot",
+            message: "The latest analysis shows elevated heat risk. Shift labor, spraying, and fertilizer handling to cooler morning periods.",
+            distance: "Selected plot area",
+            source: "Latest risk analysis",
+            time: "Now",
+          });
+        }
+
+        return alerts.slice(0, 8);
+      }
+
+      function renderCommunityAlerts() {
+        const alerts = buildCommunityAlerts();
+        communityAlertCount.textContent = alerts.length;
+        communityPlotCount.textContent = farms.length;
+        communityUvStatus.textContent = alerts.some((alert) => alert.type === "Heat") ? "Watch" : "Normal";
+
+        if (!alerts.length) {
+          communityAlerts.innerHTML = '<div class="empty-state">No community alerts yet. Farmer notes and completed analyses will appear here as dummy nearby alerts.</div>';
+          return;
+        }
+
+        communityAlerts.innerHTML = alerts.map((alert) => `
+          <article class="alert-card">
+            <header>
+              <strong>${escapeHtml(alert.title)}</strong>
+              ${riskBadge(alert.severity)}
+            </header>
+            <p>${escapeHtml(alert.message)}</p>
+            <div class="alert-meta">
+              <span>${escapeHtml(alert.type)}</span>
+              <span>${escapeHtml(alert.distance)}</span>
+              <span>${escapeHtml(alert.source)}</span>
+              <span>${escapeHtml(alert.time)}</span>
+            </div>
+          </article>
+        `).join("");
+      }
+
       function renderAll() {
         dashboardTotalFarms.textContent = farms.length;
         dashboardAnalysisMetric.textContent = latestAnalysis ? latestAnalysis.status : "None";
@@ -750,6 +935,7 @@
         renderFarmRows(dashboardFarmTable, farms.slice(0, 5));
         renderFarmRows(farmsTable, farms);
         renderFarmDetail();
+        renderCommunityAlerts();
         const canAnalyze = Boolean(savedFarmId);
         analyze.disabled = !canAnalyze;
         reportRunAnalysis.disabled = !canAnalyze;
@@ -1205,6 +1391,8 @@
       generateRecommendations.addEventListener("click", async () => {
         await generateRecommendationsForLatest({ showPage: true });
       });
+
+      refreshCommunityAlerts.addEventListener("click", renderCommunityAlerts);
 
       async function loadLatestRecommendation() {
         try {
