@@ -89,6 +89,9 @@ def build_evidence_snapshot(farm: Farm, analysis: FarmAnalysis) -> dict:
             "crop": farm.crop,
             "area_hectares": farm.area_hectares,
             "planting_date": farm.planting_date.isoformat() if farm.planting_date else None,
+            "expected_harvest_date": (
+                farm.expected_harvest_date.isoformat() if farm.expected_harvest_date else None
+            ),
             "irrigation_type": farm.irrigation_type.value,
             "farmer_notes": farm.notes or "insufficient data",
         },

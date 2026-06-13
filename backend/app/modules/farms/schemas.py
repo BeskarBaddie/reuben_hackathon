@@ -15,6 +15,7 @@ class FarmCreate(BaseModel):
     crop: str = Field(min_length=1, max_length=120)
     boundary: BoundaryInput
     planting_date: date | None = None
+    expected_harvest_date: date | None = None
     irrigation_type: IrrigationType = IrrigationType.RAINFED
     notes: str | None = Field(default=None, max_length=4_000)
 
@@ -27,6 +28,7 @@ class FarmRead(BaseModel):
     name: str
     crop: str
     planting_date: date | None
+    expected_harvest_date: date | None
     irrigation_type: IrrigationType
     area_hectares: float
     notes: str | None

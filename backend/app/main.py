@@ -50,6 +50,12 @@ app = create_app()
 
 def sync_sqlite_schema_for_local_development() -> None:
     inspector = inspect(engine)
+    if "farms" in inspector.get_table_names():
+        farm_columns = {column["name"] for column in inspector.get_columns("farms")}
+        if "expected_harvest_date" not in farm_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE farms ADD COLUMN expected_harvest_date DATE"))
+
     if "farm_analyses" not in inspector.get_table_names():
         return
 

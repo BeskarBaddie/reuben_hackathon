@@ -15,397 +15,522 @@
     />
     <style>
       :root {
-        --bg: #f7f8f5;
-        --fg: #1b1f1d;
-        --muted: #66736c;
-        --line: #d9dfd8;
-        --panel: #ffffff;
-        --accent: #1f7a4d;
-        --accent-strong: #145f3a;
-        --danger: #9f2d2d;
+        --background: #f4f5f0;
+        --foreground: #1a1c18;
+        --card: #ffffff;
+        --muted: #eaebe6;
+        --muted-foreground: #5c6358;
+        --border: rgba(26, 28, 24, 0.11);
+        --primary: #1b4332;
+        --primary-strong: #123225;
+        --accent: #40916c;
+        --accent-soft: #d8f3dc;
+        --blue-soft: #dbeafe;
+        --amber-soft: #fef3c7;
+        --red-soft: #fee2e2;
+        --danger: #c0392b;
+        --warning: #b45309;
+        --radius: 8px;
+        --sidebar: #1b4332;
+        --sidebar-text: #d8f3dc;
+        --sidebar-border: rgba(255, 255, 255, 0.09);
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--fg);
-        font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
-      header {
-        align-items: center;
-        background: #fff;
-        border-bottom: 1px solid var(--line);
-        display: flex;
-        justify-content: space-between;
-        padding: 16px clamp(20px, 5vw, 72px);
-      }
-
-      nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      nav button {
-        background: #fff;
-        border: 1px solid var(--line);
-        color: var(--fg);
-        min-height: 34px;
-        padding-inline: 12px;
-      }
-
-      nav button.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
-      }
-
-      header strong {
-        display: block;
-        font-size: 18px;
-      }
-
-      header span,
-      p,
-      .status {
-        color: var(--muted);
-      }
-
-      main {
-        display: grid;
-        gap: 24px;
-        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-        padding: 24px clamp(20px, 5vw, 72px);
-      }
-
-      .view {
-        display: none;
-      }
-
-      .view.active {
-        display: grid;
-      }
-
-      .dashboard {
-        gap: 18px;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        padding: 24px clamp(20px, 5vw, 72px);
-      }
-
-      .dashboard-card,
-      .report-panel {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        display: grid;
-        gap: 10px;
-        padding: 18px;
-      }
-
-      .dashboard-card strong {
-        font-size: 15px;
-      }
-
-      .dashboard-card span,
-      .report-panel span,
-      .report-panel li {
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .single-column {
-        gap: 18px;
-        grid-template-columns: minmax(0, 900px);
-        padding: 24px clamp(20px, 5vw, 72px);
-      }
-
-      section,
-      aside {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .panel-header {
-        border-bottom: 1px solid var(--line);
-        padding: 18px 20px;
-      }
-
-      h1,
-      h2 {
-        font-size: 20px;
-        line-height: 1.2;
-        margin: 0 0 6px;
-      }
-
-      form {
-        display: grid;
-        gap: 16px;
-        padding: 20px;
-      }
-
-      label {
-        display: grid;
-        font-size: 13px;
-        font-weight: 650;
-        gap: 7px;
-      }
-
-      input,
-      select,
-      textarea {
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        color: var(--fg);
-        font: inherit;
-        min-height: 42px;
-        padding: 10px 12px;
-        width: 100%;
-      }
-
-      textarea {
-        min-height: 84px;
-      }
+      button, input, select, textarea { font: inherit; }
 
       button {
-        background: var(--accent);
+        align-items: center;
+        background: var(--primary);
         border: 0;
         border-radius: 6px;
         color: #fff;
         cursor: pointer;
-        font: inherit;
-        min-height: 42px;
-        padding: 0 16px;
+        display: inline-flex;
+        font-size: 14px;
+        font-weight: 650;
+        gap: 8px;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 14px;
       }
 
-      button:hover {
-        background: var(--accent-strong);
+      button:hover { background: var(--primary-strong); }
+      button:disabled { background: #9caf9f; cursor: not-allowed; }
+      .secondary-button { background: #fff; border: 1px solid var(--border); color: var(--foreground); }
+      .secondary-button:hover { background: var(--muted); }
+
+      input, select, textarea {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--foreground);
+        min-height: 40px;
+        padding: 9px 11px;
+        width: 100%;
       }
 
-      button:disabled {
-        background: #96aa9d;
-        cursor: not-allowed;
+      textarea { min-height: 112px; resize: vertical; }
+      label { display: grid; gap: 7px; font-size: 13px; font-weight: 700; }
+      h1, h2, h3, p { margin: 0; }
+      p, .muted, .status { color: var(--muted-foreground); }
+      .error { color: var(--danger); }
+
+      .app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+      .sidebar {
+        background: var(--sidebar);
+        border-right: 1px solid var(--sidebar-border);
+        color: var(--sidebar-text);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        position: sticky;
+        top: 0;
       }
 
-      .map-tools {
+      .brand {
         align-items: center;
-        border-bottom: 1px solid var(--line);
+        border-bottom: 1px solid var(--sidebar-border);
+        display: flex;
+        gap: 11px;
+        min-height: 64px;
+        padding: 0 18px;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: var(--accent);
+        border-radius: 7px;
+        display: flex;
+        font-weight: 800;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+      }
+
+      .brand strong { display: block; font-size: 15px; line-height: 1.1; }
+      .brand span { color: rgba(216, 243, 220, 0.68); display: block; font-size: 12px; margin-top: 2px; }
+      .nav-label {
+        color: rgba(216, 243, 220, 0.52);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        padding: 18px 18px 8px;
+        text-transform: uppercase;
+      }
+
+      .nav { display: grid; gap: 3px; padding: 0 10px; }
+      .nav-button {
+        background: transparent;
+        color: var(--sidebar-text);
+        justify-content: flex-start;
+        min-height: 40px;
+        opacity: 0.82;
+        width: 100%;
+      }
+      .nav-button:hover, .nav-button.active { background: #2d6a4f; opacity: 1; }
+      .nav-icon { width: 18px; text-align: center; }
+      .sidebar-footer {
+        border-top: 1px solid var(--sidebar-border);
+        color: rgba(216, 243, 220, 0.52);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        margin-top: auto;
+        padding: 14px 18px;
+      }
+
+      .workspace { display: flex; flex-direction: column; min-width: 0; }
+      .topbar {
+        align-items: center;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        min-height: 64px;
+        padding: 0 28px;
+      }
+      .topbar h1 { font-size: 20px; font-weight: 700; }
+      .topbar p { font-size: 13px; margin-top: 2px; }
+      .page-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+      .view { display: none; }
+      .view.active { display: block; }
+      .page { margin: 0 auto; max-width: 1280px; padding: 24px 28px 36px; width: 100%; }
+      .grid { display: grid; gap: 16px; }
+      .summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; }
+      .two-column { grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); }
+      .three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .card-body { padding: 18px; }
+      .card-header {
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 15px 18px;
+      }
+      .card-header h2, .card-header h3 { font-size: 15px; font-weight: 750; }
+      .card-header p { font-size: 12px; margin-top: 2px; }
+      .metric-card { align-items: center; display: flex; gap: 14px; padding: 16px; }
+      .metric-icon {
+        align-items: center;
+        border-radius: 8px;
+        display: flex;
+        flex: 0 0 auto;
+        font-weight: 800;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+      .metric-label { color: var(--muted-foreground); font-size: 12px; }
+      .metric-value { font-size: 21px; font-weight: 800; line-height: 1.2; margin-top: 2px; }
+
+      .table-wrap { overflow-x: auto; }
+      table { border-collapse: collapse; width: 100%; }
+      th {
+        background: rgba(234, 235, 230, 0.55);
+        color: var(--muted-foreground);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        padding: 11px 14px;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      td { border-top: 1px solid var(--border); font-size: 14px; padding: 13px 14px; vertical-align: top; }
+      tr:hover td { background: rgba(234, 235, 230, 0.25); }
+
+      .badge {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 750;
+        gap: 6px;
+        min-height: 24px;
+        padding: 0 9px;
+        text-transform: capitalize;
+      }
+      .badge.low { background: var(--accent-soft); color: #2d6a4f; }
+      .badge.medium { background: var(--amber-soft); color: var(--warning); }
+      .badge.high, .badge.critical { background: var(--red-soft); color: var(--danger); }
+      .badge.unknown, .badge.pending { background: var(--muted); color: var(--muted-foreground); }
+      .badge.success { background: var(--accent-soft); color: #2d6a4f; }
+
+      form { display: grid; gap: 15px; }
+      .form-row { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .form-help { color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+
+      .map-toolbar {
+        align-items: center;
+        border-bottom: 1px solid var(--border);
         display: flex;
         gap: 12px;
         justify-content: space-between;
         padding: 14px 16px;
       }
-
-      .map-actions {
-        align-items: center;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: flex-end;
-      }
-
-      .map-actions button {
-        min-height: 36px;
-        padding-inline: 12px;
-      }
-
-      .map-search {
-        border-bottom: 1px solid var(--line);
-        padding: 12px 16px;
-      }
-
-      #geocoder {
-        width: 100%;
-      }
-
-      .mapboxgl-ctrl-geocoder {
-        box-shadow: none;
-        max-width: none;
-        width: 100%;
-      }
-
-      .mapboxgl-ctrl-geocoder input {
-        border: 1px solid var(--line);
-        min-height: 42px;
-      }
-
-      #map {
-        height: 560px;
-        width: 100%;
-      }
-
-      .mapboxgl-map {
-        font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-
-      .mapboxgl-ctrl-group button {
-        min-height: 29px;
-      }
-
+      .map-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+      .map-actions button { min-height: 34px; }
+      .map-search { border-bottom: 1px solid var(--border); padding: 12px 16px; }
+      #geocoder { width: 100%; }
+      .mapboxgl-ctrl-geocoder { box-shadow: none; max-width: none; width: 100%; }
+      .mapboxgl-ctrl-geocoder input { border: 1px solid var(--border); min-height: 40px; }
+      #map { height: min(62vh, 620px); min-height: 430px; width: 100%; }
+      .mapboxgl-map { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mapboxgl-ctrl-group button { min-height: 29px; }
       .setup-warning {
         background: #fff7ed;
         border-bottom: 1px solid #fed7aa;
         color: #9a3412;
         display: none;
+        font-size: 13px;
         padding: 12px 16px;
       }
-
       pre {
-        border-top: 1px solid var(--line);
-        color: var(--muted);
+        border-top: 1px solid var(--border);
+        color: var(--muted-foreground);
         font-size: 12px;
         margin: 0;
-        max-height: 140px;
+        max-height: 130px;
         overflow: auto;
         padding: 12px 16px;
         white-space: pre-wrap;
       }
 
-      .status {
-        font-size: 13px;
-        min-height: 18px;
-      }
-
-      .error {
-        color: var(--danger);
-      }
-
+      .status { font-size: 13px; min-height: 18px; }
+      .analysis-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .analysis-card {
-        border: 1px solid var(--line);
-        border-radius: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         display: grid;
         gap: 6px;
-        padding: 12px;
+        padding: 13px;
+      }
+      .analysis-card strong { font-size: 13px; }
+      .analysis-card span, .analysis-card li { color: var(--muted-foreground); font-size: 13px; }
+      .driver-list { margin: 8px 0 0; padding-left: 18px; }
+      .action-list { display: grid; gap: 12px; margin: 0; padding: 0; }
+      .action-item {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        display: grid;
+        gap: 8px;
+        list-style: none;
+        padding: 14px;
+      }
+      .priority { background: var(--primary); border-radius: 6px; color: #fff; display: inline-grid; font-weight: 800; height: 26px; place-items: center; width: 26px; }
+      .empty-state { color: var(--muted-foreground); display: grid; gap: 10px; justify-items: start; padding: 24px; }
+      .settings-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .plot-snapshot {
+        aspect-ratio: 16 / 9;
+        background: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        display: block;
+        object-fit: cover;
+        width: 100%;
       }
 
-      .analysis-card strong {
-        font-size: 14px;
-      }
-
-      @media (max-width: 920px) {
-        main {
-          grid-template-columns: 1fr;
-        }
-
-        .dashboard {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 980px) {
+        .app-shell { grid-template-columns: 1fr; }
+        .sidebar { min-height: auto; position: static; }
+        .nav { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-bottom: 10px; }
+        .nav-label, .sidebar-footer { display: none; }
+        .topbar { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px; }
+        .page { padding: 18px 16px 28px; }
+        .summary-grid, .two-column, .three-column, .analysis-grid, .settings-grid, .form-row { grid-template-columns: 1fr; }
+        #map { min-height: 360px; }
       }
     </style>
   </head>
   <body>
-    <header>
-      <div>
-        <strong>Climate Intelligence</strong>
-        <span>Farm registration and Earth Engine analysis</span>
-      </div>
-      <nav>
-        <button class="nav-button active" data-view="dashboard-view" type="button">Dashboard</button>
-        <button class="nav-button" data-view="register-view" type="button">Register</button>
-        <button class="nav-button" data-view="report-view" type="button">Report</button>
-        <button class="nav-button" data-view="recommendations-view" type="button">Recommendations</button>
-      </nav>
-    </header>
-
-    <section id="dashboard-view" class="view dashboard active">
-      <div class="dashboard-card">
-        <strong>Farm</strong>
-        <span id="dashboard-farm">No farm saved yet.</span>
-        <button data-view="register-view" type="button">Register farm</button>
-      </div>
-      <div class="dashboard-card">
-        <strong>Latest Analysis</strong>
-        <span id="dashboard-analysis">No analysis run yet.</span>
-        <button data-view="report-view" type="button">View report</button>
-      </div>
-      <div class="dashboard-card">
-        <strong>Recommendations</strong>
-        <span id="dashboard-recommendations">No recommendations generated yet.</span>
-        <button data-view="recommendations-view" type="button">View actions</button>
-      </div>
-    </section>
-
-    <main id="register-view" class="view">
-      <aside>
-        <div class="panel-header">
-          <h1>Register Farm</h1>
-          <p>Search a region, draw a farm polygon, then run satellite analysis.</p>
-        </div>
-        <form id="farm-form">
-          <label>
-            Farm name
-            <input id="name" required placeholder="Field A" />
-          </label>
-          <label>
-            Crop
-            <input id="crop" required value="maize" />
-          </label>
-          <label>
-            Planting date
-            <input id="planting-date" type="date" />
-          </label>
-          <label>
-            Irrigation
-            <select id="irrigation-type">
-              <option value="rainfed">Rainfed</option>
-              <option value="partial">Partial</option>
-              <option value="full">Full</option>
-              <option value="none">None</option>
-            </select>
-          </label>
-          <label>
-            Farm description
-            <textarea id="notes" maxlength="4000" placeholder="Describe the field in your own words: soil condition, pests, access constraints, water sources, recent problems, farmer observations"></textarea>
-          </label>
-          <button id="save" type="submit" disabled>Save farm</button>
-          <button id="analyze" type="button" disabled>Run analysis</button>
-          <div id="status" class="status">Search a place or use the map controls to draw a farm boundary.</div>
-        </form>
-      </aside>
-
-      <section>
-        <div class="map-tools">
-          <h2>Boundary</h2>
-          <div class="map-actions">
-            <button id="fit-boundary" type="button" disabled>Fit boundary</button>
-            <button id="clear" type="button">Clear boundary</button>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CI</div>
+          <div>
+            <strong>ClimateIQ</strong>
+            <span>Plot Intelligence</span>
           </div>
         </div>
-        <div id="setup-warning" class="setup-warning">
-          Add your Mapbox public token to <code>frontend/static/config.js</code> as
-          <code>MAPBOX_TOKEN</code>, then reload this page.
-        </div>
-        <div class="map-search">
-          <div id="geocoder"></div>
-        </div>
-        <div id="map"></div>
-        <pre id="boundary-preview">No boundary yet.</pre>
-      </section>
-    </main>
+        <div class="nav-label">Navigation</div>
+        <nav class="nav">
+          <button class="nav-button active" data-view="dashboard-view" type="button"><span class="nav-icon">D</span>Dashboard</button>
+          <button class="nav-button" data-view="farms-view" type="button"><span class="nav-icon">P</span>Plots</button>
+          <button class="nav-button" data-view="farm-detail-view" type="button"><span class="nav-icon">I</span>Plot profile</button>
+          <button class="nav-button" data-view="report-view" type="button"><span class="nav-icon">R</span>Report</button>
+          <button class="nav-button" data-view="recommendations-view" type="button"><span class="nav-icon">G</span>Recommendations</button>
+          <button class="nav-button" data-view="settings-view" type="button"><span class="nav-icon">S</span>Settings</button>
+        </nav>
+        <div class="sidebar-footer">v0.1.0 · Local build</div>
+      </aside>
 
-    <section id="report-view" class="view single-column">
-      <div class="report-panel">
-        <h1>Analysis Report</h1>
-        <div id="analysis" class="status">Save a farm, then run analysis.</div>
-        <button id="report-run-analysis" type="button" disabled>Run analysis</button>
-      </div>
-    </section>
+      <div class="workspace">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">Dashboard</h1>
+            <p id="page-subtitle">Monitor plots, climate risk, and adaptation actions.</p>
+          </div>
+          <div class="page-actions">
+            <button class="secondary-button" data-view="farms-view" type="button">View plots</button>
+          </div>
+        </header>
 
-    <section id="recommendations-view" class="view single-column">
-      <div class="report-panel">
-        <h1>Recommendations</h1>
-        <div id="recommendations" class="status">Run analysis before generating recommendations.</div>
-        <button id="generate-recommendations" type="button" disabled>Generate recommendations</button>
+        <section id="dashboard-view" class="view active">
+          <div class="page">
+            <div class="grid summary-grid">
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--accent-soft); color: #2d6a4f;">F</div>
+                <div><div class="metric-label">Total Plots</div><div id="dashboard-total-farms" class="metric-value">0</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--blue-soft); color: #2563eb;">A</div>
+                <div><div class="metric-label">Latest Analysis</div><div id="dashboard-analysis-metric" class="metric-value">None</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--red-soft); color: var(--danger);">R</div>
+                <div><div class="metric-label">Overall Risk</div><div id="dashboard-risk-metric" class="metric-value">Unknown</div></div>
+              </div>
+              <div class="card metric-card">
+                <div class="metric-icon" style="background: var(--amber-soft); color: var(--warning);">G</div>
+                <div><div class="metric-label">Recommendations</div><div id="dashboard-recommendation-metric" class="metric-value">0</div></div>
+              </div>
+            </div>
+
+            <div class="grid two-column">
+              <div class="card">
+                <div class="card-header">
+                  <div><h2>Plot Overview</h2><p>Registered plots belonging to this farm system</p></div>
+                  <button class="secondary-button" data-view="farms-view" type="button">View all</button>
+                </div>
+                <div id="dashboard-farm-table" class="table-wrap"></div>
+              </div>
+              <div class="grid">
+                <div class="card">
+                  <div class="card-header"><div><h2>Latest Risk Summary</h2><p>Based on the latest completed analysis</p></div></div>
+                  <div class="card-body">
+                    <p id="dashboard-analysis">No analysis run yet.</p>
+                    <div id="dashboard-risk-breakdown" class="grid" style="margin-top: 14px;"></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div><h2>Next Actions</h2><p>Most common workflow shortcuts</p></div></div>
+                  <div class="card-body grid">
+                    <button data-view="register-view" type="button">Add plot</button>
+                    <button id="dashboard-run-analysis" class="secondary-button" type="button" disabled>Analyze + recommend</button>
+                    <button data-view="recommendations-view" class="secondary-button" type="button">View recommendations</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="farms-view" class="view">
+          <div class="page">
+            <div class="card">
+              <div class="card-header">
+                <div><h2>Plots</h2><p>Manage plot boundaries, crop details, and latest analysis status.</p></div>
+                <button data-view="register-view" type="button">Add plot</button>
+              </div>
+              <div id="farms-table" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <main id="register-view" class="view">
+          <div class="page grid two-column">
+            <aside class="card">
+              <div class="card-header">
+                <div><h2>Add plot</h2><p>Draw a boundary and capture crop, irrigation, and farmer observations.</p></div>
+              </div>
+              <div class="card-body">
+                <form id="farm-form">
+                  <label>Plot name <input id="name" required placeholder="North maize plot" /></label>
+                  <div class="form-row">
+                    <label>Crop <input id="crop" required value="maize" /></label>
+                    <label>Planting date <input id="planting-date" type="date" /></label>
+                  </div>
+                  <label>Expected harvest date <input id="expected-harvest-date" type="date" /></label>
+                  <label>
+                    Irrigation
+                    <select id="irrigation-type">
+                      <option value="rainfed">Rainfed</option>
+                      <option value="partial">Partial</option>
+                      <option value="full">Full</option>
+                      <option value="none">None</option>
+                    </select>
+                  </label>
+                  <label>
+                    Plot description
+                    <textarea id="notes" maxlength="4000" placeholder="Describe the field in your own words: soil condition, pests, access constraints, water sources, recent problems, farmer observations"></textarea>
+                    <span class="form-help">This text is included in recommendation evidence for farmer-specific advice.</span>
+                  </label>
+                  <button id="save" type="submit" disabled>Save plot</button>
+                  <button id="analyze" class="secondary-button" type="button" disabled>Analyze + recommend</button>
+                  <div id="status" class="status">Search a place or use the map controls to draw a plot boundary.</div>
+                </form>
+              </div>
+            </aside>
+
+            <section class="card">
+              <div class="map-toolbar">
+                <div><h2>Boundary</h2><p class="muted">Search a location, then draw one polygon.</p></div>
+                <div class="map-actions">
+                  <button id="fit-boundary" class="secondary-button" type="button" disabled>Fit boundary</button>
+                  <button id="clear" class="secondary-button" type="button">Clear boundary</button>
+                </div>
+              </div>
+              <div id="setup-warning" class="setup-warning">
+                Add your Mapbox public token to <code>frontend/static/config.js</code> as <code>MAPBOX_TOKEN</code>, then reload this page.
+              </div>
+              <div class="map-search"><div id="geocoder"></div></div>
+              <div id="map"></div>
+              <pre id="boundary-preview">No boundary yet.</pre>
+            </section>
+          </div>
+        </main>
+
+        <section id="farm-detail-view" class="view">
+          <div class="page grid two-column">
+            <div class="card">
+              <div class="card-header"><div><h2>Plot Profile</h2><p>Saved registration data, snapshot, and latest workflow state.</p></div></div>
+              <div id="farm-detail" class="card-body empty-state">Save a plot to see its profile.</div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div><h2>Workflow</h2><p>Run analysis and generate the adaptation plan in one step.</p></div></div>
+              <div class="card-body grid">
+                <button id="detail-run-analysis" type="button" disabled>Analyze + recommend</button>
+                <button class="secondary-button" data-view="report-view" type="button">View report</button>
+                <button class="secondary-button" data-view="recommendations-view" type="button">View recommendations</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="report-view" class="view">
+          <div class="page">
+            <div class="card">
+              <div class="card-header">
+                <div><h2>Analysis Report</h2><p>Deterministic satellite, climate, and risk outputs.</p></div>
+                <button id="report-run-analysis" type="button" disabled>Analyze + recommend</button>
+              </div>
+              <div id="analysis" class="card-body status">Save a plot, then run analysis.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="recommendations-view" class="view">
+          <div class="page">
+            <div class="card">
+              <div class="card-header">
+                <div><h2>Recommendations</h2><p>Farmer-friendly actions generated from stored evidence.</p></div>
+                <button id="generate-recommendations" type="button" disabled>Generate recommendations</button>
+              </div>
+              <div id="recommendations" class="card-body status">Run analysis before generating recommendations.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings-view" class="view">
+          <div class="page grid settings-grid">
+            <div class="card">
+              <div class="card-header"><div><h2>System</h2><p>Local development endpoints.</p></div></div>
+              <div class="card-body grid">
+                <label>Backend URL <input value="http://127.0.0.1:8000" readonly /></label>
+                <label>Map provider <input value="Mapbox satellite-streets" readonly /></label>
+                <p id="settings-backend-status" class="status">Backend status has not been checked.</p>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div><h2>Recommendation Provider</h2><p>Configured in the backend environment.</p></div></div>
+              <div class="card-body grid">
+                <label>Provider <input value="Ollama local or deterministic fallback" readonly /></label>
+                <label>Ollama base URL <input value="http://127.0.0.1:11434" readonly /></label>
+                <label>Model <input value="llama3.1:latest" readonly /></label>
+                <p class="status">Secrets stay in <code>backend/.env</code>; never place API keys in browser code.</p>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
 
     <script src="./config.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
@@ -418,21 +543,94 @@
       const preview = document.getElementById("boundary-preview");
       const save = document.getElementById("save");
       const analyze = document.getElementById("analyze");
+      const expectedHarvestDate = document.getElementById("expected-harvest-date");
       const reportRunAnalysis = document.getElementById("report-run-analysis");
       const generateRecommendations = document.getElementById("generate-recommendations");
       const fitBoundary = document.getElementById("fit-boundary");
       const status = document.getElementById("status");
       const analysisStatus = document.getElementById("analysis");
       const recommendationsStatus = document.getElementById("recommendations");
-      const dashboardFarm = document.getElementById("dashboard-farm");
       const dashboardAnalysis = document.getElementById("dashboard-analysis");
-      const dashboardRecommendations = document.getElementById("dashboard-recommendations");
+      const pageTitle = document.getElementById("page-title");
+      const pageSubtitle = document.getElementById("page-subtitle");
+      const dashboardTotalFarms = document.getElementById("dashboard-total-farms");
+      const dashboardAnalysisMetric = document.getElementById("dashboard-analysis-metric");
+      const dashboardRiskMetric = document.getElementById("dashboard-risk-metric");
+      const dashboardRecommendationMetric = document.getElementById("dashboard-recommendation-metric");
+      const dashboardFarmTable = document.getElementById("dashboard-farm-table");
+      const dashboardRiskBreakdown = document.getElementById("dashboard-risk-breakdown");
+      const dashboardRunAnalysis = document.getElementById("dashboard-run-analysis");
+      const farmsTable = document.getElementById("farms-table");
+      const farmDetail = document.getElementById("farm-detail");
+      const detailRunAnalysis = document.getElementById("detail-run-analysis");
+      const settingsBackendStatus = document.getElementById("settings-backend-status");
       const setupWarning = document.getElementById("setup-warning");
       let selectedBoundary = null;
       let savedFarmId = null;
+      let savedFarm = null;
+      let farms = [];
       let latestAnalysisId = null;
       let latestAnalysis = null;
       let latestRecommendation = null;
+      const storedPlotBoundaries = JSON.parse(localStorage.getItem("climateiq_plot_boundaries") || "{}");
+
+      const pageCopy = {
+        "dashboard-view": ["Dashboard", "Monitor plots, climate risk, and adaptation actions."],
+        "farms-view": ["Plots", "Manage registered plots and recent risk status."],
+        "register-view": ["Add plot", "Capture plot information and draw a boundary."],
+        "farm-detail-view": ["Plot profile", "Review the selected plot and workflow state."],
+        "report-view": ["Analysis report", "Satellite, climate, and deterministic risk outputs."],
+        "recommendations-view": ["Recommendations", "Farmer-friendly adaptation actions generated from evidence."],
+        "settings-view": ["Settings", "Local backend, map, and model-provider configuration."],
+      };
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function formatValue(value, suffix = "") {
+        return value === null || value === undefined || value === "" ? "pending" : `${value}${suffix}`;
+      }
+
+      function riskBadge(level) {
+        const safeLevel = level || "unknown";
+        return `<span class="badge ${escapeHtml(safeLevel)}">${escapeHtml(safeLevel)}</span>`;
+      }
+
+      function persistPlotBoundary(plotId, boundary) {
+        if (!plotId || !boundary) {
+          return;
+        }
+        storedPlotBoundaries[plotId] = boundary;
+        localStorage.setItem("climateiq_plot_boundaries", JSON.stringify(storedPlotBoundaries));
+      }
+
+      function removeStoredPlotBoundary(plotId) {
+        delete storedPlotBoundaries[plotId];
+        localStorage.setItem("climateiq_plot_boundaries", JSON.stringify(storedPlotBoundaries));
+      }
+
+      function plotSnapshotUrl(plot) {
+        if (!mapboxToken || !plot?.boundary?.coordinates?.[0]?.length) {
+          return "";
+        }
+        const coordinates = plot.boundary.coordinates[0];
+        const lons = coordinates.map((coordinate) => coordinate[0]);
+        const lats = coordinates.map((coordinate) => coordinate[1]);
+        const centerLon = (Math.min(...lons) + Math.max(...lons)) / 2;
+        const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        const encodedGeojson = encodeURIComponent(JSON.stringify({
+          type: "Feature",
+          properties: { stroke: "#123225", "stroke-width": 4, fill: "#40916c", "fill-opacity": 0.24 },
+          geometry: plot.boundary,
+        }));
+        return `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/geojson(${encodedGeojson})/${centerLon},${centerLat},15,0/720x405?access_token=${mapboxToken}`;
+      }
 
       function showView(viewId) {
         document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
@@ -440,75 +638,167 @@
         document.querySelectorAll(".nav-button").forEach((button) => {
           button.classList.toggle("active", button.dataset.view === viewId);
         });
+        const copy = pageCopy[viewId] || pageCopy["dashboard-view"];
+        pageTitle.textContent = copy[0];
+        pageSubtitle.textContent = copy[1];
+        if (viewId === "register-view" && window.climateMap) {
+          setTimeout(() => window.climateMap.resize(), 150);
+        }
       }
 
       document.querySelectorAll("[data-view]").forEach((button) => {
         button.addEventListener("click", () => showView(button.dataset.view));
       });
 
-      function updateDashboard() {
-        dashboardFarm.textContent = savedFarmId ? `Saved farm ID ${savedFarmId}` : "No farm saved yet.";
+      function renderFarmRows(target, rows) {
+        if (!rows.length) {
+          target.innerHTML = '<div class="empty-state">No plots saved yet.<button data-view="register-view" type="button">Add plot</button></div>';
+          target.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
+          return;
+        }
+        target.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Plot</th><th>Crop</th><th>Area</th><th>Irrigation</th><th>Planting</th><th>Harvest</th><th>Latest risk</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((farm) => `
+                <tr>
+                  <td><strong>${escapeHtml(farm.name)}</strong><br /><span class="muted">${escapeHtml(farm.id)}</span></td>
+                  <td>${escapeHtml(farm.crop)}</td>
+                  <td>${formatValue(farm.area_hectares, " ha")}</td>
+                  <td>${escapeHtml(farm.irrigation_type)}</td>
+                  <td>${escapeHtml(farm.planting_date || "not set")}</td>
+                  <td>${escapeHtml(farm.expected_harvest_date || "not set")}</td>
+                  <td>${riskBadge(latestAnalysis?.farm_id === farm.id ? latestAnalysis.overall_risk_level : farm.latestRisk)}</td>
+                  <td>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      <button class="secondary-button select-farm" data-farm-id="${escapeHtml(farm.id)}" type="button">View</button>
+                      <button class="secondary-button delete-farm" data-farm-id="${escapeHtml(farm.id)}" type="button">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+        target.querySelectorAll(".select-farm").forEach((button) => {
+          button.addEventListener("click", () => {
+            const farm = farms.find((item) => item.id === button.dataset.farmId);
+            if (farm) {
+              savedFarm = farm;
+              savedFarmId = farm.id;
+              renderAll();
+              showView("farm-detail-view");
+            }
+          });
+        });
+        target.querySelectorAll(".delete-farm").forEach((button) => {
+          button.addEventListener("click", () => deletePlot(button.dataset.farmId));
+        });
+      }
+
+      function renderFarmDetail() {
+        if (!savedFarm) {
+          farmDetail.innerHTML = "Save a plot to see its profile.";
+          return;
+        }
+        const snapshotUrl = plotSnapshotUrl(savedFarm);
+        farmDetail.innerHTML = `
+          ${snapshotUrl
+            ? `<img class="plot-snapshot" src="${snapshotUrl}" alt="Satellite snapshot of ${escapeHtml(savedFarm.name)}" />`
+            : '<div class="plot-snapshot empty-state">Plot snapshot will appear for newly saved plots with boundary geometry.</div>'}
+          <div class="analysis-grid">
+            <div class="analysis-card"><strong>Name</strong><span>${escapeHtml(savedFarm.name)}</span></div>
+            <div class="analysis-card"><strong>Crop</strong><span>${escapeHtml(savedFarm.crop)}</span></div>
+            <div class="analysis-card"><strong>Area</strong><span>${formatValue(savedFarm.area_hectares, " ha")}</span></div>
+            <div class="analysis-card"><strong>Irrigation</strong><span>${escapeHtml(savedFarm.irrigation_type)}</span></div>
+            <div class="analysis-card"><strong>Planting date</strong><span>${escapeHtml(savedFarm.planting_date || "not set")}</span></div>
+            <div class="analysis-card"><strong>Expected harvest</strong><span>${escapeHtml(savedFarm.expected_harvest_date || "not set")}</span></div>
+            <div class="analysis-card"><strong>Latest risk</strong><span>${riskBadge(latestAnalysis?.overall_risk_level)}</span></div>
+          </div>
+          <div class="analysis-card" style="margin-top: 12px;">
+            <strong>Farmer notes</strong>
+            <span>${escapeHtml(savedFarm.notes || "No description provided.")}</span>
+          </div>
+        `;
+      }
+
+      function renderAll() {
+        dashboardTotalFarms.textContent = farms.length;
+        dashboardAnalysisMetric.textContent = latestAnalysis ? latestAnalysis.status : "None";
+        dashboardRiskMetric.textContent = latestAnalysis?.overall_risk_level || "Unknown";
+        dashboardRecommendationMetric.textContent = latestRecommendation?.output?.actions?.length || 0;
         dashboardAnalysis.textContent = latestAnalysis
-          ? `Overall risk ${latestAnalysis.overall_risk_level}; drought ${latestAnalysis.drought_level}`
+          ? `Overall risk ${latestAnalysis.overall_risk_level || "pending"}; drought ${latestAnalysis.drought_level || "pending"}; heat ${latestAnalysis.heat_level || "pending"}.`
           : "No analysis run yet.";
-        dashboardRecommendations.textContent = latestRecommendation
-          ? `${latestRecommendation.output.actions.length} actions generated`
-          : "No recommendations generated yet.";
+        dashboardRiskBreakdown.innerHTML = latestAnalysis
+          ? `
+            <div class="analysis-card"><strong>Drought</strong><span>${riskBadge(latestAnalysis.drought_level)} ${formatValue(latestAnalysis.drought_score)}</span></div>
+            <div class="analysis-card"><strong>Flood</strong><span>${riskBadge(latestAnalysis.flood_level)} ${formatValue(latestAnalysis.flood_score)}</span></div>
+            <div class="analysis-card"><strong>Heat stress</strong><span>${riskBadge(latestAnalysis.heat_level)} ${formatValue(latestAnalysis.heat_score)}</span></div>
+          `
+          : '<div class="empty-state">Run an analysis to populate risk scores.</div>';
+        renderFarmRows(dashboardFarmTable, farms.slice(0, 5));
+        renderFarmRows(farmsTable, farms);
+        renderFarmDetail();
+        const canAnalyze = Boolean(savedFarmId);
+        analyze.disabled = !canAnalyze;
+        reportRunAnalysis.disabled = !canAnalyze;
+        detailRunAnalysis.disabled = !canAnalyze;
+        dashboardRunAnalysis.disabled = !canAnalyze;
+        generateRecommendations.disabled = latestAnalysis?.status !== "completed";
       }
 
       function renderAnalysisReport(body) {
         latestAnalysis = body;
         latestAnalysisId = body.id;
-        dashboardAnalysis.textContent = `Overall risk ${body.overall_risk_level}; drought ${body.drought_level}`;
         generateRecommendations.disabled = body.status !== "completed";
         analysisStatus.innerHTML = `
-          <div class="analysis-card">
-            <strong>Farm health report</strong>
-            <span>NDVI: ${body.ndvi}</span>
-            <span>Vegetation: ${body.vegetation_health}</span>
-            <span>Water stress: ${body.water_stress}</span>
-            <span>Image date: ${body.image_date}</span>
-            <span>Source: ${body.source}</span>
-            <span>Rainfall this season: ${body.rainfall_this_season_mm ?? "pending"} mm</span>
-            <span>Historical rainfall average: ${body.rainfall_historical_average_mm ?? "pending"} mm</span>
-            <span>Rainfall anomaly: ${body.rainfall_anomaly_percent ?? "pending"}%</span>
-            <span>Temperature this season: ${body.temperature_this_season_c ?? "pending"} C</span>
-            <span>Temperature anomaly: ${body.temperature_anomaly_c ?? "pending"} C</span>
-            <span>Climate signal: ${body.climate_signal ?? "pending"}</span>
-            <span>Drought risk: ${body.drought_level ?? "pending"} (${body.drought_score ?? "pending"})</span>
-            <span>${(body.drought_drivers ?? []).join("; ")}</span>
-            <span>Flood risk: ${body.flood_level ?? "pending"} (${body.flood_score ?? "pending"})</span>
-            <span>${(body.flood_drivers ?? []).join("; ")}</span>
-            <span>Heat stress risk: ${body.heat_level ?? "pending"} (${body.heat_score ?? "pending"})</span>
-            <span>${(body.heat_drivers ?? []).join("; ")}</span>
-            <span>Overall risk: ${body.overall_risk_level ?? "pending"}</span>
+          <div class="analysis-grid">
+            <div class="analysis-card"><strong>NDVI</strong><span>${formatValue(body.ndvi)}</span></div>
+            <div class="analysis-card"><strong>Vegetation</strong><span>${formatValue(body.vegetation_health)}</span></div>
+            <div class="analysis-card"><strong>Water stress</strong><span>${riskBadge(body.water_stress)}</span></div>
+            <div class="analysis-card"><strong>Rainfall this season</strong><span>${formatValue(body.rainfall_this_season_mm, " mm")}</span></div>
+            <div class="analysis-card"><strong>Historical rainfall</strong><span>${formatValue(body.rainfall_historical_average_mm, " mm")}</span></div>
+            <div class="analysis-card"><strong>Rainfall anomaly</strong><span>${formatValue(body.rainfall_anomaly_percent, "%")}</span></div>
+            <div class="analysis-card"><strong>Temperature</strong><span>${formatValue(body.temperature_this_season_c, " C")}</span></div>
+            <div class="analysis-card"><strong>Temperature anomaly</strong><span>${formatValue(body.temperature_anomaly_c, " C")}</span></div>
+            <div class="analysis-card"><strong>Climate signal</strong><span>${formatValue(body.climate_signal)}</span></div>
+            <div class="analysis-card"><strong>Drought risk</strong><span>${riskBadge(body.drought_level)} ${formatValue(body.drought_score)}</span><ul class="driver-list">${(body.drought_drivers ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+            <div class="analysis-card"><strong>Flood risk</strong><span>${riskBadge(body.flood_level)} ${formatValue(body.flood_score)}</span><ul class="driver-list">${(body.flood_drivers ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+            <div class="analysis-card"><strong>Heat stress</strong><span>${riskBadge(body.heat_level)} ${formatValue(body.heat_score)}</span><ul class="driver-list">${(body.heat_drivers ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
           </div>
+          <div class="analysis-card" style="margin-top: 12px;"><strong>Overall risk</strong><span>${riskBadge(body.overall_risk_level)}</span><span>Image date: ${formatValue(body.image_date)} · Source: ${formatValue(body.source)}</span></div>
         `;
+        renderAll();
       }
 
       function renderRecommendations(recommendation) {
         latestRecommendation = recommendation;
-        dashboardRecommendations.textContent = `${recommendation.output.actions.length} actions generated`;
         recommendationsStatus.innerHTML = `
           <div class="analysis-card">
             <strong>Adaptation plan</strong>
-            <span>${recommendation.output.summary}</span>
-            <span>Provider: ${recommendation.provider}</span>
-            <ol>
+            <span>${escapeHtml(recommendation.output.summary)}</span>
+            <span>${riskBadge(recommendation.provider)} Model: ${escapeHtml(recommendation.model || "none")} · Prompt: ${escapeHtml(recommendation.prompt_version)}</span>
+          </div>
+          <ol class="action-list" style="margin-top: 12px;">
               ${recommendation.output.actions
                 .map(
                   (action) => `
-                    <li>
-                      <strong>${action.action}</strong><br />
-                      ${action.reason}<br />
-                      Evidence: ${action.evidence.join("; ")}
+                    <li class="action-item">
+                      <div style="display: flex; align-items: center; gap: 10px;"><span class="priority">${action.priority}</span><strong>${escapeHtml(action.action)}</strong></div>
+                      <span>${escapeHtml(action.reason)}</span>
+                      <span>Evidence: ${action.evidence.map(escapeHtml).join("; ")}</span>
                     </li>
                   `
                 )
                 .join("")}
-            </ol>
-          </div>
+          </ol>
         `;
+        renderAll();
       }
 
       const boundaryStyles = [
@@ -591,6 +881,7 @@
           attributionControl: true,
           preserveDrawingBuffer: false
         });
+        window.climateMap = map;
 
         map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-left");
         map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-left");
@@ -624,11 +915,10 @@
             selectedBoundary = null;
             preview.textContent = "No boundary yet.";
             save.disabled = true;
-            analyze.disabled = true;
             fitBoundary.disabled = true;
-            savedFarmId = null;
             status.textContent = "Draw a polygon boundary on the map.";
             status.className = "status";
+            renderAll();
             return;
           }
 
@@ -641,6 +931,7 @@
           fitBoundary.disabled = false;
           status.textContent = "Boundary ready.";
           status.className = "status";
+          renderAll();
         }
 
         function fitSelectedBoundary() {
@@ -679,13 +970,14 @@
         }
 
         save.disabled = true;
-        status.textContent = "Saving farm...";
+        status.textContent = "Saving plot...";
         status.className = "status";
 
         const payload = {
           name: document.getElementById("name").value,
           crop: document.getElementById("crop").value,
           planting_date: document.getElementById("planting-date").value || null,
+          expected_harvest_date: expectedHarvestDate.value || null,
           irrigation_type: document.getElementById("irrigation-type").value,
           notes: document.getElementById("notes").value || null,
           boundary: selectedBoundary
@@ -702,16 +994,17 @@
           });
           const body = await response.json();
           if (!response.ok) {
-            throw new Error(body.detail || "Could not save farm");
+            throw new Error(body.detail || "Could not save plot");
           }
           status.textContent = `Saved ${body.farm.name} (${body.farm.area_hectares} ha).`;
           status.className = "status";
           savedFarmId = body.farm.id;
-          dashboardFarm.textContent = `${body.farm.name} (${body.farm.area_hectares} ha)`;
-          analyze.disabled = false;
-          reportRunAnalysis.disabled = false;
-          analysisStatus.textContent = "Farm saved. Run analysis to generate the report.";
-          showView("report-view");
+          savedFarm = { ...body.farm, boundary: selectedBoundary };
+          persistPlotBoundary(savedFarmId, selectedBoundary);
+          farms = [savedFarm, ...farms.filter((farm) => farm.id !== body.farm.id)];
+          analysisStatus.textContent = "Plot saved. Run analysis to generate the report.";
+          renderAll();
+          showView("farm-detail-view");
         } catch (error) {
           status.textContent = error.message;
           status.className = "status error";
@@ -720,6 +1013,38 @@
         }
       });
 
+      async function deletePlot(farmId) {
+        if (!farmId) {
+          return;
+        }
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/v1/farms/${farmId}`, {
+            method: "DELETE",
+            headers: { "X-User-Id": userId }
+          });
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new Error(body.detail || "Could not delete plot");
+          }
+          removeStoredPlotBoundary(farmId);
+          farms = farms.filter((farm) => farm.id !== farmId);
+          if (savedFarmId === farmId) {
+            savedFarm = farms[0] || null;
+            savedFarmId = savedFarm?.id || null;
+            latestAnalysis = null;
+            latestAnalysisId = null;
+            latestRecommendation = null;
+            analysisStatus.textContent = "Save a plot, then run analysis.";
+            recommendationsStatus.textContent = "Run analysis before generating recommendations.";
+          }
+          renderAll();
+          showView("farms-view");
+        } catch (error) {
+          settingsBackendStatus.textContent = error.message;
+          settingsBackendStatus.className = "status error";
+        }
+      }
+
       async function runAnalysis() {
         if (!savedFarmId) {
           return;
@@ -727,6 +1052,9 @@
 
         analyze.disabled = true;
         reportRunAnalysis.disabled = true;
+        detailRunAnalysis.disabled = true;
+        dashboardRunAnalysis.disabled = true;
+        generateRecommendations.disabled = true;
         analysisStatus.innerHTML = '<div class="analysis-card"><strong>Analysis</strong><span>Starting...</span></div>';
         showView("report-view");
 
@@ -757,6 +1085,7 @@
 
             if (body.status === "completed") {
               renderAnalysisReport(body);
+              await generateRecommendationsForLatest({ showPage: true });
               return;
             }
 
@@ -772,15 +1101,16 @@
           analysisStatus.textContent = error.message;
           analysisStatus.className = "status error";
         } finally {
-          analyze.disabled = false;
-          reportRunAnalysis.disabled = !savedFarmId;
+          renderAll();
         }
       }
 
       analyze.addEventListener("click", runAnalysis);
       reportRunAnalysis.addEventListener("click", runAnalysis);
+      detailRunAnalysis.addEventListener("click", runAnalysis);
+      dashboardRunAnalysis.addEventListener("click", runAnalysis);
 
-      generateRecommendations.addEventListener("click", async () => {
+      async function generateRecommendationsForLatest({ showPage = true } = {}) {
         if (!latestAnalysisId) {
           return;
         }
@@ -809,9 +1139,37 @@
         } finally {
           generateRecommendations.disabled = !latestAnalysisId;
         }
+      }
+
+      generateRecommendations.addEventListener("click", async () => {
+        await generateRecommendationsForLatest({ showPage: true });
       });
 
-      updateDashboard();
+      async function loadFarms() {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/v1/farms`, {
+            headers: { "X-User-Id": userId }
+          });
+          if (!response.ok) {
+            throw new Error("Could not load farms");
+          }
+          farms = (await response.json()).map((farm) => ({
+            ...farm,
+            boundary: storedPlotBoundaries[farm.id] || null,
+          }));
+          savedFarm = farms[0] || null;
+          savedFarmId = savedFarm?.id || null;
+          settingsBackendStatus.textContent = "Backend connected.";
+          settingsBackendStatus.className = "status";
+        } catch (error) {
+          settingsBackendStatus.textContent = error.message;
+          settingsBackendStatus.className = "status error";
+        } finally {
+          renderAll();
+        }
+      }
+
+      loadFarms();
     </script>
   </body>
 </html>

@@ -58,6 +58,7 @@ def test_evidence_snapshot_includes_farmer_notes() -> None:
         name="Field B",
         crop="maize",
         planting_date=date(2026, 5, 1),
+        expected_harvest_date=date(2026, 9, 1),
         irrigation_type=IrrigationType.PARTIAL,
         area_hectares=1.8,
         boundary="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
@@ -73,6 +74,7 @@ def test_evidence_snapshot_includes_farmer_notes() -> None:
     evidence = build_evidence_snapshot(farm, analysis)
 
     assert evidence["farm"]["farmer_notes"] == "Low area floods after heavy rain; upper slope is sandy."
+    assert evidence["farm"]["expected_harvest_date"] == "2026-09-01"
 
 
 def test_recommendation_context_selects_relevant_crop_and_irrigation_only() -> None:

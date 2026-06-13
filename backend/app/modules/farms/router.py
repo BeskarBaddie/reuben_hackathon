@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_session
@@ -36,3 +36,15 @@ def list_farms(
     service: FarmService = Depends(get_farm_service),
 ) -> list[FarmRead]:
     return service.list_farms(owner_id=user_id)
+
+
+@router.delete("/{farm_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_farm(
+    farm_id: UUID,
+    user_id: UUID = Depends(get_current_user_id),
+    service: FarmService = Depends(get_farm_service),
+) -> Response:
+    deleted = service.delete_farm(farm_id=farm_id, owner_id=user_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farm not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

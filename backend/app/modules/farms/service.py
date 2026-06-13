@@ -14,3 +14,6 @@ class FarmService:
 
     def list_farms(self, owner_id: UUID) -> list[Farm]:
         return self.repository.list_for_owner(owner_id=owner_id)
+
+    def delete_farm(self, farm_id: UUID, owner_id: UUID) -> bool:
+        return self.repository.delete_for_owner(farm_id=farm_id, owner_id=owner_id)

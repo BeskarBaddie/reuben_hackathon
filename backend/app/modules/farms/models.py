@@ -31,6 +31,7 @@ class Farm(Base):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     crop: Mapped[str] = mapped_column(String(120), nullable=False)
     planting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expected_harvest_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     irrigation_type: Mapped[IrrigationType] = mapped_column(
         Enum(
             IrrigationType,
