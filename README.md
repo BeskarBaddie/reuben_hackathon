@@ -1,53 +1,111 @@
-# Climate Intelligence Platform
+# AgriShield
 
-AI-assisted climate decision support for smallholder farmers. Phase 1 is a modular monolith with a FastAPI backend and a Next.js frontend.
+AgriShield is an AI-assisted climate intelligence platform for smallholder farmers. It helps farmers register plots, analyze climate and vegetation risk, retrieve crop-specific guidance, and generate practical adaptation recommendations.
+
+The current build is a modular monolith with a FastAPI backend and a static local frontend. It is designed so modules can later be extracted into services.
+
+## What It Does
+
+- Register farm plots with crop, planting date, expected harvest date, irrigation type, farmer notes, and drawn boundaries.
+- Store plot boundaries with PostGIS-compatible geometry.
+- Analyze plots with Google Earth Engine:
+  - NDVI
+  - vegetation health
+  - water stress
+  - rainfall anomaly
+  - temperature anomaly
+  - drought, flood, and heat stress scores
+- Sync crop guidance documents from Google Drive.
+- Use lightweight RAG to retrieve relevant crop guidance for each plot.
+- Generate farmer-friendly recommendations with Ollama, OpenAI, or deterministic fallback logic.
+- Show a dashboard, plot management, analysis report, recommendations, settings, and dummy community alerts.
 
 ## Architecture
 
 - `backend/`: FastAPI modular monolith
-  - `auth`: user identity contracts
-  - `farms`: farm profiles, crop data, planting dates, irrigation and boundaries
-  - `geospatial`: polygon validation, area calculation and boundary operations
-  - `analysis`: asynchronous analysis contracts and job status
-  - `recommendations`: LLM-facing recommendation wording contracts
-- `frontend/`: Next.js app for farm registration and boundary capture
-- `infra/`: local development and Cloud Run oriented container wiring
+  - `auth`: local user identity contract
+  - `farms`: plot profiles, crop data, planting/harvest dates, irrigation, notes, boundaries
+  - `geospatial`: polygon validation, area calculation, geometry handling
+  - `analysis`: Earth Engine analysis jobs and risk outputs
+  - `climate`: rainfall and temperature anomaly summaries
+  - `risk`: deterministic drought, flood, and heat scoring
+  - `knowledge`: Google Drive sync, document parsing, chunking, and retrieval
+  - `recommendations`: LLM prompts, recommendation generation, specificity layer
+- `frontend/static/`: local browser UI using Mapbox GL JS
+- `infra/`: deployment-oriented infrastructure placeholders
 
-## Local Development
+## AI Models And Techniques
 
-```bash
-docker compose up --build
+AgriShield separates deterministic analysis from language generation.
+
+LLMs are used for:
+
+- recommendation wording
+- farmer-friendly explanations
+- summarization of evidence into practical actions
+
+LLMs are not used for:
+
+- NDVI calculation
+- climate anomaly calculation
+- geospatial analysis
+- farm boundary detection
+- risk scoring
+
+Current AI/model options:
+
+- **Ollama local LLM**: default local option, tested with `llama3.1:latest`
+- **OpenAI API**: optional provider through `RECOMMENDATION_PROVIDER=openai`
+- **Deterministic fallback**: rule-based recommendations if an LLM is unavailable
+
+Techniques used:
+
+- **RAG over Google Drive**: crop documents are synced, parsed, chunked, stored, searched, and only relevant chunks are passed to the LLM.
+- **Keyword/metadata retrieval**: current retrieval uses crop, risk drivers, farmer notes, irrigation, and climate signals rather than vector embeddings.
+- **Structured JSON generation**: recommendations must match a strict schema.
+- **Prompt constraints**: the LLM must not invent data and must say `insufficient data` when evidence is missing.
+- **Deterministic risk scoring**: drought, flood, and heat scores come from code, not the LLM.
+- **Specificity layer**: after LLM generation, backend logic makes recommendations more actionable using farm notes, risk evidence, crop stage, and retrieved source names.
+
+Future AI improvements:
+
+- vector embeddings for semantic retrieval
+- OCR for scanned PDFs
+- multilingual summaries
+- farmer Q&A over the indexed knowledge base
+- better source ranking by crop, geography, season, and document quality
+
+## External Services
+
+Required for full functionality:
+
+- Google Earth Engine through a Google Cloud project
+- Google Drive API for knowledge-base document sync
+- Mapbox public token for browser maps and location search
+- Ollama locally, or OpenAI API if using OpenAI recommendations
+
+## Local Run Instructions
+
+### 1. Backend Environment
+
+Create or update `backend/.env`.
+
+For local SQLite testing:
+
+```env
+DATABASE_URL=sqlite:///./local.db
+CORS_ORIGINS=["http://localhost:8080","http://127.0.0.1:8080","null"]
 ```
 
-Backend: `http://localhost:8000`
+For PostgreSQL/PostGIS:
 
-Frontend: `http://localhost:3000`
+```env
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/climate
+```
 
-## Sprint 1 Scope
+Earth Engine:
 
-- Create farm profiles
-- Validate GeoJSON polygon boundaries
-- Store boundaries in PostgreSQL/PostGIS
-- Expose REST API contracts
-- Provide a frontend farm registration workflow
-
-LLMs are intentionally not used for geospatial analysis, climate calculations, or risk scoring.
-
-## Phase 2 Setup: Earth Engine
-
-The app currently defaults to `REMOTE_SENSING_PROVIDER=mock`, which produces deterministic placeholder NDVI results so the end-to-end workflow can be tested without cloud credentials.
-
-To switch to real satellite analysis:
-
-1. Create or choose a Google Cloud project.
-2. Enable the Earth Engine API for that project.
-3. Register the project for Earth Engine access.
-4. Create a service account for backend analysis jobs.
-5. Grant the service account Earth Engine access and the minimum IAM roles required by your project.
-6. Create a JSON key for local development, or use Cloud Run service identity in production.
-7. Set:
-
-```bash
+```env
 REMOTE_SENSING_PROVIDER=earth_engine
 EARTH_ENGINE_PROJECT_ID=your-gcp-project-id
 EARTH_ENGINE_SERVICE_ACCOUNT_EMAIL=service-account@your-project.iam.gserviceaccount.com
@@ -55,208 +113,259 @@ EARTH_ENGINE_SERVICE_ACCOUNT_KEY_PATH=/absolute/path/to/service-account-key.json
 EARTH_ENGINE_DAYS_LOOKBACK=45
 ```
 
-For Cloud Run, prefer Workload Identity / attached service account credentials instead of shipping JSON keys. In that case, keep `EARTH_ENGINE_PROJECT_ID` set and omit the key path variables.
+Climate defaults:
 
-## Phase 2 API
-
-Start farm analysis:
-
-```http
-POST /api/v1/farms/{farm_id}/analyses
-```
-
-Response:
-
-```json
-{
-  "analysis_id": "123",
-  "status": "processing"
-}
-```
-
-Fetch analysis:
-
-```http
-GET /api/v1/analyses/{analysis_id}
-```
-
-Current outputs:
-
-- NDVI
-- Vegetation health
-- Water stress
-- Source dataset/provider
-- Evidence metadata
-
-The Earth Engine adapter uses Sentinel-2 Surface Reflectance Harmonized imagery and computes NDVI from bands `B8` and `B4`.
-
-## Phase 3 Climate Intelligence
-
-The analysis job now also produces deterministic climate summaries:
-
-- Rainfall this season
-- Historical rainfall average for the same seasonal window
-- Rainfall anomaly percentage
-- Mean temperature this season
-- Historical mean temperature
-- Temperature anomaly
-- Simple climate signal label
-
-Earth Engine datasets:
-
-- Rainfall: `UCSB-CHG/CHIRPS/DAILY`, band `precipitation`
-- Temperature: `ECMWF/ERA5_LAND/DAILY_AGGR`, band `temperature_2m`
-
-Default comparison window:
-
-```bash
+```env
 CLIMATE_SEASON_DAYS=90
 CLIMATE_BASELINE_START_YEAR=2001
 CLIMATE_BASELINE_END_YEAR=2020
 ```
 
-The climate module performs deterministic calculations only. LLMs are not used for climate anomaly calculations.
+Ollama recommendations:
 
-## Mapbox Setup
-
-Create a Mapbox public access token for browser map rendering and geocoding.
-
-For the Next.js app:
-
-```bash
-NEXT_PUBLIC_MAPBOX_TOKEN=pk.your_public_mapbox_token
-```
-
-For the current static local launcher, create `frontend/static/config.js` from `frontend/static/config.example.js`:
-
-```js
-window.CLIMATE_APP_CONFIG = {
-  MAPBOX_TOKEN: "pk.your_public_mapbox_token"
-};
-```
-
-Recommended Mapbox token restrictions:
-
-- URL restrictions for local development:
-  - `http://localhost:3000/*`
-  - `http://127.0.0.1:3000/*`
-  - `http://localhost:8080/*`
-  - `http://127.0.0.1:8080/*`
-- Production domain restriction once deployed.
-- Token scopes:
-  - public map rendering
-  - geocoding/search access
-
-Do not use a secret Mapbox token in browser code. Use a public `pk.*` token only.
-
-## Phase 5 Recommendations
-
-Recommendations are generated after an analysis completes. The recommendation module uses deterministic fallback rules by default:
-
-```bash
-RECOMMENDATION_PROVIDER=deterministic
-```
-
-To use OpenAI for farmer-friendly wording while preserving deterministic risk calculations:
-
-```bash
-RECOMMENDATION_PROVIDER=openai
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5.5
-```
-
-Put `OPENAI_API_KEY` in `backend/.env` for local development. Do not put it in frontend files or commit it to GitHub.
-
-To use Ollama locally without paid API credits:
-
-```bash
+```env
 RECOMMENDATION_PROVIDER=ollama
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.1:latest
 ```
 
-Start Ollama locally and make sure the selected model exists:
+Google Drive knowledge base:
 
-```bash
-ollama serve
-ollama pull llama3.1
-```
-
-The LLM receives only:
-
-- A compact system instruction
-- A selected agricultural context pack for the farm crop / irrigation setup
-- The stored evidence snapshot, including crop, planting date, irrigation type, farmer notes, vegetation indicators, climate summaries, and deterministic risk scores
-
-It must return JSON matching the recommendation schema. It does not calculate NDVI, climate anomalies, or risk scores.
-
-The recommendation prompt is designed for token efficiency:
-
-- Stable instructions and context are placed before farm-specific evidence so provider-side prompt caching can help.
-- Only relevant crop and irrigation context is included, not every possible guideline document.
-- Farm-specific evidence is serialized compactly.
-- Output is capped with `max_output_tokens`.
-
-API:
-
-```http
-POST /api/v1/analyses/{analysis_id}/recommendations
-GET /api/v1/analyses/{analysis_id}/recommendations
-```
-
-The static local UI is now split into:
-
-- Dashboard
-- Register
-- Report
-- Recommendations
-
-## Knowledge Base: Google Drive Crop Guidance
-
-The recommendation engine can retrieve crop guidance from documents synced from Google Drive. This keeps prompts small: the app indexes documents once, retrieves the most relevant chunks for the plot/crop/risk context, and sends only those chunks to the LLM.
-
-Configure:
-
-```bash
-GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_PATH=/absolute/path/to/drive-service-account.json
-GOOGLE_DRIVE_FOLDER_IDS=["folder_id_1","folder_id_2"]
+```env
+GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_PATH=/absolute/path/to/service-account-key.json
+GOOGLE_DRIVE_FOLDER_IDS=["your_google_drive_folder_id"]
 KNOWLEDGE_MAX_CHUNKS=6
 ```
 
+Use the folder ID from:
+
+```text
+https://drive.google.com/drive/folders/THIS_IS_THE_FOLDER_ID
+```
+
+The backend also accepts a full Google Drive folder URL.
+
+### 2. Frontend Mapbox Config
+
+Create `frontend/static/config.js` from `frontend/static/config.example.js`:
+
+```js
+window.CLIMATE_APP_CONFIG = {
+  MAPBOX_TOKEN: "pk.your_mapbox_public_token_here"
+};
+```
+
+Use a public `pk.*` Mapbox token only. Do not put secret tokens in frontend files.
+
+### 3. Start Ollama
+
+```bash
+/opt/homebrew/bin/ollama serve
+```
+
+Or, if `ollama` is on your `PATH`:
+
+```bash
+ollama serve
+```
+
+Make sure the model exists:
+
+```bash
+ollama pull llama3.1
+ollama list
+```
+
+### 4. Start Backend
+
+From the repo root:
+
+```bash
+cd backend
+DATABASE_URL=sqlite:///./local.db ../.venv312/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Backend URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+### 5. Start Frontend
+
+From the repo root:
+
+```bash
+cd frontend/static
+python3 -m http.server 8080 --bind 127.0.0.1
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080
+```
+
+## Knowledge Base Sync
+
+Make sure:
+
+- Google Drive API is enabled.
+- The service account has access to the Drive folder.
+- The folder ID is configured in `backend/.env`.
+
 Sync documents:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/knowledge/sync \
+  -H "Content-Type: application/json" \
+  -d '{"max_files":50}'
+```
+
+Search retrieved guidance:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/knowledge/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"maize drought rainfed water stress","crop":"maize","limit":6}'
+```
+
+Supported document types:
+
+- Google Docs, exported as text
+- text, Markdown, CSV
+- PDF through `pypdf`
+- DOCX through `python-docx`
+
+Scanned PDFs may need OCR before text can be indexed.
+
+## Main API Endpoints
+
+Create plot:
+
+```http
+POST /api/v1/farms
+```
+
+List plots:
+
+```http
+GET /api/v1/farms
+```
+
+Delete plot:
+
+```http
+DELETE /api/v1/farms/{farm_id}
+```
+
+Start analysis:
+
+```http
+POST /api/v1/farms/{farm_id}/analyses
+```
+
+Get analysis:
+
+```http
+GET /api/v1/analyses/{analysis_id}
+```
+
+Generate recommendations:
+
+```http
+POST /api/v1/analyses/{analysis_id}/recommendations
+```
+
+Get latest recommendation for an analysis:
+
+```http
+GET /api/v1/analyses/{analysis_id}/recommendations
+```
+
+Get latest saved recommendation for the user:
+
+```http
+GET /api/v1/recommendations/latest
+```
+
+Sync knowledge:
 
 ```http
 POST /api/v1/knowledge/sync
 ```
 
-Optional body:
-
-```json
-{
-  "folder_ids": ["folder_id_1"],
-  "max_files": 50
-}
-```
-
-Search indexed guidance:
+Search knowledge:
 
 ```http
 POST /api/v1/knowledge/search
 ```
 
-```json
-{
-  "query": "maize drought water stress rainfed",
-  "crop": "maize",
-  "limit": 6
-}
+For local testing, requests use:
+
+```http
+X-User-Id: 11111111-1111-4111-8111-111111111111
 ```
 
-Supported document types:
+## Current UI
 
-- Google Docs, exported as plain text
-- Plain text / Markdown / CSV
-- PDF, via `pypdf`
-- DOCX, via `python-docx`
+The current browser UI includes:
 
-The recommendation prompt receives retrieved chunks under `retrieved_guidance` and cites source names in the recommendation evidence.
+- Dashboard
+- Plots
+- Plot profile
+- Analysis report
+- Recommendations
+- Community alerts
+- Settings
+
+Community alerts are currently a dummy frontend feature. They surface seeded nearby alerts and farmer-note-derived alerts within a displayed 50 km² community zone. A production version should use a backend `community_alerts` table plus PostGIS radius queries.
+
+## Testing
+
+Run focused backend tests:
+
+```bash
+cd backend
+../.venv312/bin/python -m pytest tests/test_knowledge.py tests/test_recommendations.py
+```
+
+Compile backend Python:
+
+```bash
+PYTHONPYCACHEPREFIX=/private/tmp/reuben_pycache .venv312/bin/python -m compileall backend/app backend/tests backend/alembic
+```
+
+Check frontend inline JavaScript syntax:
+
+```bash
+node -e "const fs=require('fs'); const html=fs.readFileSync('frontend/static/index.html','utf8'); const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]); for (const script of scripts) new Function(script); console.log('inline scripts ok');"
+```
+
+## Deployment Direction
+
+Preferred cloud: Google Cloud Platform.
+
+Suggested services:
+
+- Cloud Run for FastAPI backend and future workers
+- Cloud SQL PostgreSQL with PostGIS
+- Cloud Storage for reports and cached exports
+- Pub/Sub for future event-driven analysis workflows
+- Memorystore Redis for future background job/cache needs
+- Artifact Registry for containers
+
+For production:
+
+- use Postgres/PostGIS instead of SQLite
+- use Cloud Run service identity instead of local JSON keys
+- move long-running analysis to worker queues
+- add authentication
+- persist community alerts server-side
+- add monitoring, audit logs, and rate limits
